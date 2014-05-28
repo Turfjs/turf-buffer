@@ -27,5 +27,10 @@
   "homepage": "https://github.com/morganherlocker/turf-buffer",
   "devDependencies": {
     "tape": "^2.13.1"
+  },
+  "dependencies": {
+    "turf-combine": "0.0.1",
+    "turf-featurecollection": "^0.1.0",
+    "turf-polygon": "^0.1.0"
   }
 }

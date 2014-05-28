@@ -1,75 +1,22 @@
-var t = require('../index'), 
-    fs = require('fs')
+var test = require('tape')
+var buffer = require('./')
+var fs = require('fs')
 
-describe('buffer', function(){
-  it('should buffer a Point', function(done){
-    t.load(__dirname+'/testIn/Point1.geojson', function(err, pt){
-      var syncBuffered = t.buffer(pt, 10, 'miles', function(err, buffered){
-        //fs.writeFileSync('./testOut/buffered.geojson',JSON.stringify(buffered))
-        if(err) throw err
-      })
+test('buffer', function(t){
+  var pt = JSON.parse(fs.readFileSync(__dirname+'/geojson/Point.geojson'))
+  var line = JSON.parse(fs.readFileSync(__dirname+'/geojson/LineString.geojson'))
+  var polygon = JSON.parse(fs.readFileSync(__dirname+'/geojson/Polygon.geojson'))
+  var fc = JSON.parse(fs.readFileSync(__dirname+'/geojson/FeatureCollection.geojson'))
 
-      if (syncBuffered instanceof Error) {
-        throw syncBuffered;
-      }
+  var buffPt = buffer(pt, 10, 'miles')
+  var buffLine = buffer(pt, 10, 'miles')
+  var buffPoly = buffer(pt, 10, 'miles')
+  var buffFC = buffer(fc, 10, 'miles')
 
-      done();
-    })
-  })
-  it('should buffer a LineString', function(done){
-    t.load(__dirname+'/testIn/bezierIn.geojson', function(err, pt){
-      var syncBuffered = t.buffer(pt, 10, 'miles', function(err, buffered){
-        //fs.writeFileSync('./testOut/bufferedLine.geojson',JSON.stringify(buffered))
-        if(err) throw err
-      })
+  t.ok(buffPt, 'should buffer a point')
+  t.ok(buffLine, 'should buffer a line')
+  t.ok(buffPoly, 'should buffer a polygon')
+  t.ok(buffFC, 'should buffer featurecollection')
 
-      if (syncBuffered instanceof Error) {
-        throw syncBuffered;
-      }
-
-      done();
-    })
-  })
-  it('should buffer a Polygon', function(done){
-    t.load(__dirname+'/testIn/bufferPolygonIn.geojson', function(err, pt){
-      var syncBuffered = t.buffer(pt, 10, 'miles', function(err, buffered){
-        //fs.writeFileSync('./testOut/bufferedPolygon.geojson',JSON.stringify(buffered))
-        if(err) throw err
-      })
-
-      if (syncBuffered instanceof Error) {
-        throw syncBuffered;
-      }
-
-      done();
-    })
-  })
-  it('should buffer a set of Points', function(done){
-    t.load(__dirname+'/testIn/Point1.geojson', function(err, pt){
-      var syncBuffered = t.buffer(pt, 10, 'miles', function(err, buffered){
-        //fs.writeFileSync('./testOut/buffered.geojson',JSON.stringify(buffered))
-        if(err) throw err
-      })
-
-      if (syncBuffered instanceof Error) {
-        throw syncBuffered;
-      }
-
-      done();
-    })
-  })
-  it('should buffer a set of Points and union them', function(done){
-    t.load(__dirname+'/testIn/elevation1.geojson', function(err, pts){
-      var syncBuffered = t.buffer(pts, 10, 'miles', function(err, buffered){
-        //fs.writeFileSync('./testOut/bufferedPoints.geojson',JSON.stringify(buffered))
-        if(err) throw err
-      })
-
-      if (syncBuffered instanceof Error) {
-        throw syncBuffered;
-      }
-
-      done();
-    })
-  })
-}) 
+  t.end()
+})
