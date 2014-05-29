@@ -1,5 +1,5 @@
-//http://stackoverflow.com/questions/839899/how-do-i-calculate-a-point-on-a-circles-circumference
-//radians = degrees * (pi/180)
+// http://stackoverflow.com/questions/839899/how-do-i-calculate-a-point-on-a-circles-circumference
+// radians = degrees * (pi/180)
 // https://github.com/bjornharrtell/jsts/blob/master/examples/buffer.html
 
 var featurecollection = require('turf-featurecollection')
@@ -75,7 +75,10 @@ jsts.noding = {}
 jsts.noding.snapround = {}
 jsts.algorithm = {}
 
-//  JSTS GEOJSON PARSER
+
+
+
+//    JSTS GeoJSONParser
 
 /**
      * Create a new parser for GeoJSON
@@ -537,7 +540,9 @@ jsts.algorithm = {}
 
 
 
-//   JSTS GEOJSON READER
+
+
+//   JSTS GeoJSONReader
 
 jsts.io.GeoJSONReader = function(geometryFactory) {
       this.geometryFactory = geometryFactory || new jsts.geom.GeometryFactory();
@@ -581,7 +586,8 @@ jsts.io.GeoJSONReader = function(geometryFactory) {
 
 
 
-//  JSTS GEOMETRY FACTORY
+
+//  JSTS GeometryFactory`
 
 jsts.geom.GeometryFactory = function(precisionModel) {
   this.precisionModel = precisionModel || new jsts.geom.PrecisionModel();
