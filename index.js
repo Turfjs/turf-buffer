@@ -74,7 +74,9 @@ jsts.operation.buffer = {}
 jsts.noding = {}
 jsts.noding.snapround = {}
 jsts.algorithm = {}
-
+jsts.geomgraph = {}
+var javascript = {}
+javascript.util = {}
 
 
 
@@ -587,7 +589,7 @@ jsts.io.GeoJSONReader = function(geometryFactory) {
 
 
 
-//  JSTS GeometryFactory`
+//    JSTS GeometryFactory
 
 jsts.geom.GeometryFactory = function(precisionModel) {
   this.precisionModel = precisionModel || new jsts.geom.PrecisionModel();
@@ -828,7 +830,7 @@ jsts.geom.GeometryFactory.prototype.toGeometry = function(envelope) {
 
 
 
-//  JSTS PrecisionModel
+//    JSTS PrecisionModel
 
 jsts.geom.PrecisionModel = function(modelType) {
   if (typeof modelType === 'number') {
@@ -2755,6 +2757,282 @@ jsts.geom.Point.prototype.CLASS_NAME = 'jsts.geom.Point';
 
 
 
+// JSTS Polygon
+
+/**
+   * Represents a linear polygon, which may include holes. The shell and holes
+   * of the polygon are represented by {@link LinearRing}s. In a valid polygon,
+   * holes may touch the shell or other holes at a single point. However, no
+   * sequence of touching holes may split the polygon into two pieces. The
+   * orientation of the rings in the polygon does not matter.
+   *
+   * The shell and holes must conform to the assertions specified in the <A
+   * HREF="http://www.opengis.org/techno/specs.htm">OpenGIS Simple Features
+   * Specification for SQL</A>.
+   */
+
+
+  /**
+   * @requires jsts/geom/Geometry.js
+   */
+
+  /**
+   * @extends {jsts.geom.Geometry}
+   * @constructor
+   */
+  jsts.geom.Polygon = function(shell, holes, factory) {
+    this.shell = shell || factory.createLinearRing(null);
+    this.holes = holes || [];
+    this.factory = factory;
+  };
+
+  jsts.geom.Polygon.prototype = new jsts.geom.Geometry();
+  jsts.geom.Polygon.constructor = jsts.geom.Polygon;
+
+  jsts.geom.Polygon.prototype.getCoordinate = function() {
+    return this.shell.getCoordinate();
+  };
+
+  jsts.geom.Polygon.prototype.getCoordinates = function() {
+    if (this.isEmpty()) {
+      return [];
+    }
+    var coordinates = [];
+    var k = -1;
+    var shellCoordinates = this.shell.getCoordinates();
+    for (var x = 0; x < shellCoordinates.length; x++) {
+      k++;
+      coordinates[k] = shellCoordinates[x];
+    }
+    for (var i = 0; i < this.holes.length; i++) {
+      var childCoordinates = this.holes[i].getCoordinates();
+      for (var j = 0; j < childCoordinates.length; j++) {
+        k++;
+        coordinates[k] = childCoordinates[j];
+      }
+    }
+    return coordinates;
+  };
+
+  /**
+   * @return {number}
+   */
+  jsts.geom.Polygon.prototype.getNumPoints = function() {
+    var numPoints = this.shell.getNumPoints();
+    for (var i = 0; i < this.holes.length; i++) {
+      numPoints += this.holes[i].getNumPoints();
+    }
+    return numPoints;
+  };
+
+  /**
+   * @return {boolean}
+   */
+  jsts.geom.Polygon.prototype.isEmpty = function() {
+    return this.shell.isEmpty();
+  };
+
+  jsts.geom.Polygon.prototype.getExteriorRing = function() {
+    return this.shell;
+  };
+
+  jsts.geom.Polygon.prototype.getInteriorRingN = function(n) {
+    return this.holes[n];
+  };
+
+  jsts.geom.Polygon.prototype.getNumInteriorRing = function() {
+    return this.holes.length;
+  };
+
+  /**
+   * Returns the area of this <code>Polygon</code>
+   *
+   * @return the area of the polygon.
+   */
+  jsts.geom.Polygon.prototype.getArea = function() {
+    var area = 0.0;
+    area += Math.abs(jsts.algorithm.CGAlgorithms.signedArea(this.shell
+        .getCoordinateSequence()));
+    for (var i = 0; i < this.holes.length; i++) {
+      area -= Math.abs(jsts.algorithm.CGAlgorithms.signedArea(this.holes[i]
+          .getCoordinateSequence()));
+    }
+    return area;
+  };
+
+  /**
+   * Returns the perimeter of this <code>Polygon</code>
+   *
+   * @return the perimeter of the polygon.
+   */
+  jsts.geom.Polygon.prototype.getLength = function() {
+    var len = 0.0;
+    len += this.shell.getLength();
+    for (var i = 0; i < this.holes.length; i++) {
+      len += this.holes[i].getLength();
+    }
+    return len;
+  };
+
+  /**
+   * Computes the boundary of this geometry
+   *
+   * @return {Geometry} a lineal geometry (which may be empty).
+   * @see Geometry#getBoundary
+   */
+  jsts.geom.Polygon.prototype.getBoundary = function() {
+    if (this.isEmpty()) {
+      return this.getFactory().createMultiLineString(null);
+    }
+    var rings = [];
+    rings[0] = this.shell.clone();
+    for (var i = 0, len = this.holes.length; i < len; i++) {
+      rings[i + 1] = this.holes[i].clone();
+    }
+    // create LineString or MultiLineString as appropriate
+    if (rings.length <= 1)
+      return rings[0];
+    return this.getFactory().createMultiLineString(rings);
+  };
+
+  jsts.geom.Polygon.prototype.computeEnvelopeInternal = function() {
+    return this.shell.getEnvelopeInternal();
+  };
+
+  jsts.geom.Polygon.prototype.getDimension = function() {
+    return 2;
+  };
+
+  jsts.geom.Polygon.prototype.getBoundaryDimension = function() {
+    return 1;
+  };
+
+
+  /**
+   * @param {Geometry}
+   *          other
+   * @param {number}
+   *          tolerance
+   * @return {boolean}
+   */
+  jsts.geom.Polygon.prototype.equalsExact = function(other, tolerance) {
+    if (!this.isEquivalentClass(other)) {
+      return false;
+    }
+    if (this.isEmpty() && other.isEmpty()) {
+      return true;
+    }
+    if (this.isEmpty() !== other.isEmpty()) {
+      return false;
+    }
+
+    if (!this.shell.equalsExact(other.shell, tolerance)) {
+      return false;
+    }
+    if (this.holes.length !== other.holes.length) {
+      return false;
+    }
+    if (this.holes.length !== other.holes.length) {
+      return false;
+    }
+    for (var i = 0; i < this.holes.length; i++) {
+      if (!(this.holes[i]).equalsExact(other.holes[i], tolerance)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  jsts.geom.Polygon.prototype.compareToSameClass = function(o) {
+    return this.shell.compareToSameClass(o.shell);
+  };
+
+  jsts.geom.Polygon.prototype.apply = function(filter) {
+    if (filter instanceof jsts.geom.GeometryComponentFilter) {
+      filter.filter(this);
+      this.shell.apply(filter);
+      for (var i = 0, len = this.holes.length; i < len; i++) {
+        this.holes[i].apply(filter);
+      }
+    } else if (filter instanceof jsts.geom.GeometryFilter) {
+      filter.filter(this);
+    } else if (filter instanceof jsts.geom.CoordinateFilter) {
+      this.shell.apply(filter);
+      for (var i = 0, len = this.holes.length; i < len; i++) {
+        this.holes[i].apply(filter);
+      }
+    } else if (filter instanceof jsts.geom.CoordinateSequenceFilter) {
+      this.apply2.apply(this, arguments);
+    }
+  };
+
+  jsts.geom.Polygon.prototype.apply2 = function(filter) {
+    this.shell.apply(filter);
+    if (!filter.isDone()) {
+      for (var i = 0; i < this.holes.length; i++) {
+        this.holes[i].apply(filter);
+        if (filter.isDone())
+          break;
+      }
+    }
+    if (filter.isGeometryChanged()) {
+      // TODO: call this.geometryChanged(); when ported
+    }
+  };
+
+  /**
+   * Creates and returns a full copy of this {@link Polygon} object. (including
+   * all coordinates contained by it).
+   *
+   * @return a clone of this instance.
+   */
+  jsts.geom.Polygon.prototype.clone = function() {
+    var holes = [];
+
+    for (var i = 0, len = this.holes.length; i < len; i++) {
+      holes.push(this.holes[i].clone());
+    }
+
+    return this.factory.createPolygon(this.shell.clone(), holes);
+  };
+
+  jsts.geom.Polygon.prototype.normalize = function() {
+    this.normalize2(this.shell, true);
+    for (var i = 0, len = this.holes.length; i < len; i++) {
+      this.normalize2(this.holes[i], false);
+    }
+    // TODO: might need to supply comparison function
+    this.holes.sort();
+  };
+
+  /**
+   * @private
+   */
+  jsts.geom.Polygon.prototype.normalize2 = function(ring, clockwise) {
+    if (ring.isEmpty()) {
+      return;
+    }
+    var uniqueCoordinates = ring.points.slice(0, ring.points.length - 1);
+    var minCoordinate = jsts.geom.CoordinateArrays.minCoordinate(ring.points);
+    jsts.geom.CoordinateArrays.scroll(uniqueCoordinates, minCoordinate);
+    ring.points = uniqueCoordinates.concat();
+    ring.points[uniqueCoordinates.length] = uniqueCoordinates[0];
+    if (jsts.algorithm.CGAlgorithms.isCCW(ring.points) === clockwise) {
+      ring.points.reverse();
+    }
+  };
+
+  /**
+   * @return {String} String representation of Polygon type.
+   */
+  jsts.geom.Polygon.prototype.getGeometryType = function() {
+    return 'Polygon';
+  };
+  
+  jsts.geom.Polygon.prototype.CLASS_NAME = 'jsts.geom.Polygon';
+
+
+
 //    JSTS BUFFER PARAMETERS
 
 /* Copyright (c) 2011 by The Authors.
@@ -3418,8 +3696,7 @@ jsts.operation.buffer.BufferOp.prototype.bufferReducedPrecision2 = function(
  * @param {PrecisionModel}
  *          fixedPM
  */
-jsts.operation.buffer.BufferOp.prototype.bufferFixedPrecision = function(
-    fixedPM) {
+jsts.operation.buffer.BufferOp.prototype.bufferFixedPrecision = function(fixedPM) {
   var noder = new jsts.noding.ScaledNoder(
       new jsts.noding.snapround.MCIndexSnapRounder(
           new jsts.geom.PrecisionModel(1.0)), fixedPM.getScale());
@@ -4950,7 +5227,6 @@ jsts.algorithm.LineIntersector.prototype.getEdgeDistance = function(
  * @augments jsts.algorithm.LineIntersector
  */
 jsts.algorithm.RobustLineIntersector = function() {
-  console.log('!!!!!!!!!!',jsts.algorithm.RobustLineIntersector.prototype)
   jsts.algorithm.RobustLineIntersector.prototype.constructor.call(this);
 };
 
@@ -5561,6 +5837,1119 @@ jsts.noding.snapround.MCIndexSnapRounder.prototype.computeVertexSnaps2 = functio
     }
   }
 };
+
+
+
+
+//    JSTS BufferBuilder
+
+/* Copyright (c) 2011 by The Authors.
+ * Published under the LGPL 2.1 license.
+ * See /license-notice.txt for the full text of the license notice.
+ * See /license.txt for the full text of the license.
+ */
+
+
+
+/**
+ * Builds the buffer geometry for a given input geometry and precision model.
+ * Allows setting the level of approximation for circular arcs, and the
+ * precision model in which to carry out the computation.
+ * <p>
+ * When computing buffers in floating point double-precision it can happen that
+ * the process of iterated noding can fail to converge (terminate). In this case
+ * a TopologyException will be thrown. Retrying the computation in a fixed
+ * precision can produce more robust results.
+ *
+ * @param {jsts.operation.buffer.BufferBuilder.BufferParameters}
+ *          bufParams
+ * @constructor
+ */
+jsts.operation.buffer.BufferBuilder = function(bufParams) {
+  this.bufParams = bufParams;
+
+  this.edgeList = new jsts.geomgraph.EdgeList();
+};
+
+
+/**
+ * Compute the change in depth as an edge is crossed from R to L
+ *
+ * @param {Label}
+ *          label
+ * @return {Number}
+ */
+jsts.operation.buffer.BufferBuilder.depthDelta = function(label) {
+  var lLoc = label.getLocation(0, jsts.geomgraph.Position.LEFT);
+  var rLoc = label.getLocation(0, jsts.geomgraph.Position.RIGHT);
+  if (lLoc === jsts.geom.Location.INTERIOR &&
+      rLoc === jsts.geom.Location.EXTERIOR)
+    return 1;
+  else if (lLoc === jsts.geom.Location.EXTERIOR &&
+      rLoc === jsts.geom.Location.INTERIOR)
+    return -1;
+  return 0;
+};
+
+
+/**
+ * @type {BufferParameters}
+ * @private
+ */
+jsts.operation.buffer.BufferBuilder.prototype.bufParams = null;
+
+
+/**
+ * @type {PrecisionModel}
+ * @private
+ */
+jsts.operation.buffer.BufferBuilder.prototype.workingPrecisionModel = null;
+
+
+/**
+ * @type {Noder}
+ * @private
+ */
+jsts.operation.buffer.BufferBuilder.prototype.workingNoder = null;
+
+
+/**
+ * @type {GeometryFactory}
+ * @private
+ */
+jsts.operation.buffer.BufferBuilder.prototype.geomFact = null;
+
+
+/**
+ * @type {PlanarGraph}
+ * @private
+ */
+jsts.operation.buffer.BufferBuilder.prototype.graph = null;
+
+
+/**
+ * @type {EdgeList}
+ * @private
+ */
+jsts.operation.buffer.BufferBuilder.prototype.edgeList = null;
+
+
+/**
+ * Sets the precision model to use during the curve computation and noding, if
+ * it is different to the precision model of the Geometry. If the precision
+ * model is less than the precision of the Geometry precision model, the
+ * Geometry must have previously been rounded to that precision.
+ *
+ * @param pm
+ *          the precision model to use.
+ */
+jsts.operation.buffer.BufferBuilder.prototype.setWorkingPrecisionModel = function(
+    pm) {
+  this.workingPrecisionModel = pm;
+};
+
+
+/**
+ * Sets the {@link Noder} to use during noding. This allows choosing fast but
+ * non-robust noding, or slower but robust noding.
+ *
+ * @param noder
+ *          the noder to use.
+ */
+jsts.operation.buffer.BufferBuilder.prototype.setNoder = function(noder) {
+  this.workingNoder = noder;
+};
+
+jsts.operation.buffer.BufferBuilder.prototype.buffer = function(g, distance) {
+  var precisionModel = this.workingPrecisionModel;
+  if (precisionModel === null)
+    precisionModel = g.getPrecisionModel();
+
+  // factory must be the same as the one used by the input
+  this.geomFact = g.getFactory();
+
+  var curveBuilder = new jsts.operation.buffer.OffsetCurveBuilder(
+      precisionModel, this.bufParams);
+
+  var curveSetBuilder = new jsts.operation.buffer.OffsetCurveSetBuilder(g,
+      distance, curveBuilder);
+
+  var bufferSegStrList = curveSetBuilder.getCurves();
+
+  // short-circuit test
+  if (bufferSegStrList.size() <= 0) {
+    return this.createEmptyResultGeometry();
+  }
+
+  this.computeNodedEdges(bufferSegStrList, precisionModel);
+  this.graph = new jsts.geomgraph.PlanarGraph(
+      new jsts.operation.overlay.OverlayNodeFactory());
+  this.graph.addEdges(this.edgeList.getEdges());
+
+  var subgraphList = this.createSubgraphs(this.graph);
+  var polyBuilder = new jsts.operation.overlay.PolygonBuilder(this.geomFact);
+  this.buildSubgraphs(subgraphList, polyBuilder);
+  var resultPolyList = polyBuilder.getPolygons();
+
+  // just in case...
+  if (resultPolyList.size() <= 0) {
+    return this.createEmptyResultGeometry();
+  }
+
+  var resultGeom = this.geomFact.buildGeometry(resultPolyList);
+  return resultGeom;
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.BufferBuilder.prototype.getNoder = function(
+    precisionModel) {
+  if (this.workingNoder !== null)
+    return this.workingNoder;
+
+  // otherwise use a fast (but non-robust) noder
+  var noder = new jsts.noding.MCIndexNoder();
+  var li = new jsts.algorithm.RobustLineIntersector();
+  li.setPrecisionModel(precisionModel);
+  noder.setSegmentIntersector(new jsts.noding.IntersectionAdder(li));
+  return noder;
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.BufferBuilder.prototype.computeNodedEdges = function(
+    bufferSegStrList, precisionModel) {
+  var noder = this.getNoder(precisionModel);
+  noder.computeNodes(bufferSegStrList);
+  var nodedSegStrings = noder.getNodedSubstrings();
+
+  for (var i = nodedSegStrings.iterator(); i.hasNext();) {
+    var segStr = i.next();
+    var oldLabel = segStr.getData();
+    var edge = new jsts.geomgraph.Edge(segStr.getCoordinates(),
+        new jsts.geomgraph.Label(oldLabel));
+    this.insertUniqueEdge(edge);
+  }
+};
+
+
+/**
+ * Inserted edges are checked to see if an identical edge already exists. If so,
+ * the edge is not inserted, but its label is merged with the existing edge.
+ *
+ * @protected
+ */
+jsts.operation.buffer.BufferBuilder.prototype.insertUniqueEdge = function(e) {
+  var existingEdge = this.edgeList.findEqualEdge(e);
+
+  // If an identical edge already exists, simply update its label
+  if (existingEdge != null) {
+    var existingLabel = existingEdge.getLabel();
+
+    var labelToMerge = e.getLabel();
+    // check if new edge is in reverse direction to existing edge
+    // if so, must flip the label before merging it
+    if (!existingEdge.isPointwiseEqual(e)) {
+      labelToMerge = new jsts.geomgraph.Label(e.getLabel());
+      labelToMerge.flip();
+    }
+    existingLabel.merge(labelToMerge);
+
+    // compute new depth delta of sum of edges
+    var mergeDelta = jsts.operation.buffer.BufferBuilder
+        .depthDelta(labelToMerge);
+    var existingDelta = existingEdge.getDepthDelta();
+    var newDelta = existingDelta + mergeDelta;
+    existingEdge.setDepthDelta(newDelta);
+  } else {
+    // no matching existing edge was found
+    // add this new edge to the list of edges in this graph
+    this.edgeList.add(e);
+    e.setDepthDelta(jsts.operation.buffer.BufferBuilder
+        .depthDelta(e.getLabel()));
+  }
+};
+
+
+/**
+ * @param {PlanarGraph}
+ *          graph
+ * @private
+ */
+jsts.operation.buffer.BufferBuilder.prototype.createSubgraphs = function(graph) {
+  var subgraphList = [];
+  for (var i = graph.getNodes().iterator(); i.hasNext();) {
+    var node = i.next();
+    if (!node.isVisited()) {
+      var subgraph = new jsts.operation.buffer.BufferSubgraph();
+      subgraph.create(node);
+      subgraphList.push(subgraph);
+    }
+  }
+  /**
+   * Sort the subgraphs in descending order of their rightmost coordinate. This
+   * ensures that when the Polygons for the subgraphs are built, subgraphs for
+   * shells will have been built before the subgraphs for any holes they
+   * contain.
+   */
+
+  var compare = function(a, b) {
+    return a.compareTo(b);
+  };
+  subgraphList.sort(compare);
+  subgraphList.reverse();
+  return subgraphList;
+};
+
+
+/**
+ * Completes the building of the input subgraphs by depth-labelling them, and
+ * adds them to the PolygonBuilder. The subgraph list must be sorted in
+ * rightmost-coordinate order.
+ *
+ * @param {Array}
+ *          subgraphList the subgraphs to build.
+ * @param {PolygonBuilder}
+ *          polyBuilder the PolygonBuilder which will build the final polygons.
+ * @private
+ */
+jsts.operation.buffer.BufferBuilder.prototype.buildSubgraphs = function(
+    subgraphList, polyBuilder) {
+  var processedGraphs = [];
+  for (var i = 0; i < subgraphList.length; i++) {
+    var subgraph = subgraphList[i];
+    var p = subgraph.getRightmostCoordinate();
+    var locater = new jsts.operation.buffer.SubgraphDepthLocater(
+        processedGraphs);
+    var outsideDepth = locater.getDepth(p);
+    subgraph.computeDepth(outsideDepth);
+    subgraph.findResultEdges();
+    processedGraphs.push(subgraph);
+    polyBuilder.add(subgraph.getDirectedEdges(), subgraph.getNodes());
+  }
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.BufferBuilder.convertSegStrings = function(it) {
+  var fact = new jsts.geom.GeometryFactory();
+  var lines = new javascript.util.ArrayList();
+  while (it.hasNext()) {
+    var ss = it.next();
+    var line = fact.createLineString(ss.getCoordinates());
+    lines.add(line);
+  }
+  return fact.buildGeometry(lines);
+};
+
+
+/**
+ * Gets the standard result for an empty buffer. Since buffer always returns a
+ * polygonal result, this is chosen to be an empty polygon.
+ *
+ * @return the empty result geometry.
+ * @private
+ */
+jsts.operation.buffer.BufferBuilder.prototype.createEmptyResultGeometry = function() {
+  var emptyGeom = this.geomFact.createPolygon(null, null);
+  return emptyGeom;
+};
+
+
+
+//    JSTS EdgeList
+
+
+  /**
+   * @requires jsts/util/Assert.js
+   */
+
+  var ArrayList = javascript.util.ArrayList;
+  var TreeMap = javascript.util.TreeMap;
+
+  /**
+   * A EdgeList is a list of Edges. It supports locating edges that are
+   * pointwise equals to a target edge.
+   *
+   * @constructor
+   */
+  jsts.geomgraph.EdgeList = function() {
+    this.edges = new javascript.util.ArrayList();
+    this.ocaMap = new javascript.util.TreeMap();
+  };
+
+
+  /**
+   * @type {javascript.util.ArrayList}
+   * @private
+   */
+  jsts.geomgraph.EdgeList.prototype.edges = null;
+
+
+  /**
+   * An index of the edges, for fast lookup.
+   *
+   * @type {javascript.util.HashMap}
+   * @private
+   */
+  jsts.geomgraph.EdgeList.prototype.ocaMap = null;
+
+
+  /**
+   * Insert an edge unless it is already in the list
+   */
+  jsts.geomgraph.EdgeList.prototype.add = function(e) {
+    this.edges.add(e);
+    var oca = new jsts.noding.OrientedCoordinateArray(e.getCoordinates());
+    this.ocaMap.put(oca, e);
+  };
+
+  jsts.geomgraph.EdgeList.prototype.addAll = function(edgeColl) {
+    for (var i = edgeColl.iterator(); i.hasNext();) {
+      this.add(i.next());
+    }
+  };
+
+
+  /**
+   * @return {javascript.util.List}
+   */
+  jsts.geomgraph.EdgeList.prototype.getEdges = function() {
+    return this.edges;
+  };
+
+
+  /**
+   * If there is an edge equal to e already in the list, return it. Otherwise
+   * return null.
+   *
+   * @param {Edge}
+   *          e
+   * @return {Edge} equal edge, if there is one already in the list null
+   *         otherwise.
+   */
+  jsts.geomgraph.EdgeList.prototype.findEqualEdge = function(e) {
+    var oca = new jsts.noding.OrientedCoordinateArray(e.getCoordinates());
+    // will return null if no edge matches
+    var matchEdge = this.ocaMap.get(oca);
+    return matchEdge;
+  };
+
+  jsts.geomgraph.EdgeList.prototype.getEdges = function() {
+    return this.edges;
+  };
+
+  jsts.geomgraph.EdgeList.prototype.iterator = function() {
+    return this.edges.iterator();
+  };
+
+  jsts.geomgraph.EdgeList.prototype.get = function(i) {
+    return this.edges.get(i);
+  };
+
+
+  /**
+   * If the edge e is already in the list, return its index.
+   *
+   * @return {Number} index, if e is already in the list -1 otherwise.
+   */
+  jsts.geomgraph.EdgeList.prototype.findEdgeIndex = function(e) {
+    for (var i = 0; i < this.edges.size(); i++) {
+      if (this.edges.get(i).equals(e))
+        return i;
+    }
+    return -1;
+  };
+
+
+
+
+//    JSTS OffsetCurveBuilder
+
+/* Copyright (c) 2011 by The Authors.
+ * Published under the LGPL 2.1 license.
+ * See /license-notice.txt for the full text of the license notice.
+ * See /license.txt for the full text of the license.
+ */
+
+
+
+/**
+ * Computes the raw offset curve for a single {@link Geometry} component (ring,
+ * line or point). A raw offset curve line is not noded - it may contain
+ * self-intersections (and usually will). The final buffer polygon is computed
+ * by forming a topological graph of all the noded raw curves and tracing
+ * outside contours. The points in the raw curve are rounded to a given
+ * {@link PrecisionModel}.
+ *
+ * @constructor
+ */
+jsts.operation.buffer.OffsetCurveBuilder = function(precisionModel, bufParams) {
+  this.precisionModel = precisionModel;
+  this.bufParams = bufParams;
+};
+
+
+/**
+ * @type {double}
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveBuilder.prototype.distance = 0.0;
+
+
+/**
+ * @type {PrecisionModel}
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveBuilder.prototype.precisionModel = null;
+
+
+/**
+ * @type {BufferParameters}
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveBuilder.prototype.bufParams = null;
+
+
+/**
+ * Gets the buffer parameters being used to generate the curve.
+ *
+ * @return the buffer parameters being used.
+ */
+jsts.operation.buffer.OffsetCurveBuilder.prototype.getBufferParameters = function() {
+  return this.bufParams;
+};
+
+
+/**
+ * This method handles single points as well as LineStrings. LineStrings are
+ * assumed <b>not</b> to be closed (the function will not fail for closed
+ * lines, but will generate superfluous line caps).
+ *
+ * @param inputPts
+ *          the vertices of the line to offset.
+ * @param distance
+ *          the offset distance.
+ *
+ * @return a Coordinate array representing the curve.
+ * @return null if the curve is empty.
+ */
+jsts.operation.buffer.OffsetCurveBuilder.prototype.getLineCurve = function(
+    inputPts, distance) {
+  this.distance = distance;
+
+  // a zero or negative width buffer of a line/point is empty
+  if (this.distance < 0.0 && !this.bufParams.isSingleSided())
+    return null;
+  if (this.distance == 0.0)
+    return null;
+
+  var posDistance = Math.abs(this.distance);
+  var segGen = this.getSegGen(posDistance);
+  if (inputPts.length <= 1) {
+    this.computePointCurve(inputPts[0], segGen);
+  } else {
+    if (this.bufParams.isSingleSided()) {
+      var isRightSide = distance < 0.0;
+      this.computeSingleSidedBufferCurve(inputPts, isRightSide, segGen);
+    } else
+      this.computeLineBufferCurve(inputPts, segGen);
+  }
+
+  var lineCoord = segGen.getCoordinates();
+  return lineCoord;
+};
+
+
+/**
+ * This method handles the degenerate cases of single points and lines, as well
+ * as rings.
+ *
+ * @return a Coordinate array representing the curve.
+ * @return null if the curve is empty.
+ */
+jsts.operation.buffer.OffsetCurveBuilder.prototype.getRingCurve = function(
+    inputPts, side, distance) {
+  this.distance = distance;
+  if (inputPts.length <= 2)
+    return this.getLineCurve(inputPts, distance);
+
+  // optimize creating ring for for zero distance
+  if (this.distance == 0.0) {
+    return jsts.operation.buffer.OffsetCurveBuilder.copyCoordinates(inputPts);
+  }
+  var segGen = this.getSegGen(this.distance);
+  this.computeRingBufferCurve(inputPts, side, segGen);
+  return segGen.getCoordinates();
+};
+
+jsts.operation.buffer.OffsetCurveBuilder.prototype.getOffsetCurve = function(
+    inputPts, distance) {
+  this.distance = distance;
+
+  // a zero width offset curve is empty
+  if (this.distance === 0.0)
+    return null;
+
+  var isRightSide = this.distance < 0.0;
+  var posDistance = Math.abs(this.distance);
+  var segGen = this.getSegGen(posDistance);
+  if (inputPts.length <= 1) {
+    this.computePointCurve(inputPts[0], segGen);
+  } else {
+    this.computeOffsetCurve(inputPts, isRightSide, segGen);
+  }
+  var curvePts = segGen.getCoordinates();
+  // for right side line is traversed in reverse direction, so have to reverse
+  // generated line
+  if (isRightSide)
+    curvePts.reverse();
+  return curvePts;
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveBuilder.copyCoordinates = function(pts) {
+  var copy = [];
+  for (var i = 0; i < pts.length; i++) {
+    copy.push(pts[i].clone());
+  }
+  return copy;
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveBuilder.prototype.getSegGen = function(
+    distance) {
+  return new jsts.operation.buffer.OffsetSegmentGenerator(this.precisionModel,
+      this.bufParams, distance);
+};
+
+
+/**
+ * Use a value which results in a potential distance error which is
+ * significantly less than the error due to the quadrant segment discretization.
+ * For QS = 8 a value of 100 is reasonable. This should produce a maximum of 1%
+ * distance error.
+ *
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveBuilder.SIMPLIFY_FACTOR = 100.0;
+
+
+/**
+ * Computes the distance tolerance to use during input line simplification.
+ *
+ * @param distance
+ *          the buffer distance.
+ * @return the simplification tolerance.
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveBuilder.simplifyTolerance = function(
+    bufDistance) {
+  return bufDistance / jsts.operation.buffer.OffsetCurveBuilder.SIMPLIFY_FACTOR;
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveBuilder.prototype.computePointCurve = function(
+    pt, segGen) {
+  switch (this.bufParams.getEndCapStyle()) {
+  case jsts.operation.buffer.BufferParameters.CAP_ROUND:
+    segGen.createCircle(pt);
+    break;
+  case jsts.operation.buffer.BufferParameters.CAP_SQUARE:
+    segGen.createSquare(pt);
+    break;
+  // otherwise curve is empty (e.g. for a butt cap);
+  }
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveBuilder.prototype.computeLineBufferCurve = function(
+    inputPts, segGen) {
+  var distTol = jsts.operation.buffer.OffsetCurveBuilder
+      .simplifyTolerance(this.distance);
+
+  // --------- compute points for left side of line
+  // Simplify the appropriate side of the line before generating
+  var simp1 = jsts.operation.buffer.BufferInputLineSimplifier.simplify(
+      inputPts, distTol);
+  // MD - used for testing only (to eliminate simplification)
+  // Coordinate[] simp1 = inputPts;
+
+  var n1 = simp1.length - 1;
+  segGen.initSideSegments(simp1[0], simp1[1], jsts.geomgraph.Position.LEFT);
+  for (var i = 2; i <= n1; i++) {
+    segGen.addNextSegment(simp1[i], true);
+  }
+  segGen.addLastSegment();
+  // add line cap for end of line
+  segGen.addLineEndCap(simp1[n1 - 1], simp1[n1]);
+
+  // ---------- compute points for right side of line
+  // Simplify the appropriate side of the line before generating
+  var simp2 = jsts.operation.buffer.BufferInputLineSimplifier.simplify(
+      inputPts, -distTol);
+  // MD - used for testing only (to eliminate simplification)
+  // Coordinate[] simp2 = inputPts;
+  var n2 = simp2.length - 1;
+
+  // since we are traversing line in opposite order, offset position is still
+  // LEFT
+  segGen.initSideSegments(simp2[n2], simp2[n2 - 1], jsts.geomgraph.Position.LEFT);
+  for (var i = n2 - 2; i >= 0; i--) {
+    segGen.addNextSegment(simp2[i], true);
+  }
+  segGen.addLastSegment();
+  // add line cap for start of line
+  segGen.addLineEndCap(simp2[1], simp2[0]);
+
+  segGen.closeRing();
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveBuilder.prototype.computeSingleSidedBufferCurve = function(
+    inputPts, isRightSide, segGen) {
+  var distTol = jsts.operation.buffer.OffsetCurveBuilder
+      .simplifyTolerance(this.distance);
+
+  if (isRightSide) {
+    // add original line
+    segGen.addSegments(inputPts, true);
+
+    // ---------- compute points for right side of line
+    // Simplify the appropriate side of the line before generating
+    var simp2 = jsts.operation.buffer.BufferInputLineSimplifier.simplify(
+        inputPts, -distTol);
+    // MD - used for testing only (to eliminate simplification)
+    // Coordinate[] simp2 = inputPts;
+    var n2 = simp2.length - 1;
+
+    // since we are traversing line in opposite order, offset position is still
+    // LEFT
+    segGen.initSideSegments(simp2[n2], simp2[n2 - 1],
+        jsts.geomgraph.Position.LEFT);
+    segGen.addFirstSegment();
+    for (var i = n2 - 2; i >= 0; i--) {
+      segGen.addNextSegment(simp2[i], true);
+    }
+  } else {
+    // add original line
+    segGen.addSegments(inputPts, false);
+
+    // --------- compute points for left side of line
+    // Simplify the appropriate side of the line before generating
+    var simp1 = jsts.operation.buffer.BufferInputLineSimplifier.simplify(
+        inputPts, distTol);
+    // MD - used for testing only (to eliminate simplification)
+    // Coordinate[] simp1 = inputPts;
+
+    var n1 = simp1.length - 1;
+    segGen.initSideSegments(simp1[0], simp1[1], jsts.geomgraph.Position.LEFT);
+    segGen.addFirstSegment();
+    for (var i = 2; i <= n1; i++) {
+      segGen.addNextSegment(simp1[i], true);
+    }
+  }
+  segGen.addLastSegment();
+  segGen.closeRing();
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveBuilder.prototype.computeOffsetCurve = function(
+    inputPts, isRightSide, segGen) {
+  var distTol = jsts.operation.buffer.OffsetCurveBuilder
+      .simplifyTolerance(this.distance);
+
+  if (isRightSide) {
+    // ---------- compute points for right side of line
+    // Simplify the appropriate side of the line before generating
+    var simp2 = jsts.operation.buffer.BufferInputLineSimplifier.simplify(
+        inputPts, -distTol);
+    // MD - used for testing only (to eliminate simplification)
+    // Coordinate[] simp2 = inputPts;
+    var n2 = simp2.length - 1;
+
+    // since we are traversing line in opposite order, offset position is still
+    // LEFT
+    segGen.initSideSegments(simp2[n2], simp2[n2 - 1],
+        jsts.geomgraph.Position.LEFT);
+    segGen.addFirstSegment();
+    for (var i = n2 - 2; i >= 0; i--) {
+      segGen.addNextSegment(simp2[i], true);
+    }
+  } else {
+    // --------- compute points for left side of line
+    // Simplify the appropriate side of the line before generating
+    var simp1 = jsts.operation.buffer.BufferInputLineSimplifier.simplify(
+        inputPts, distTol);
+    // MD - used for testing only (to eliminate simplification)
+    // Coordinate[] simp1 = inputPts;
+
+    var n1 = simp1.length - 1;
+    segGen.initSideSegments(simp1[0], simp1[1], jsts.geomgraph.Position.LEFT);
+    segGen.addFirstSegment();
+    for (var i = 2; i <= n1; i++) {
+      segGen.addNextSegment(simp1[i], true);
+    }
+  }
+  segGen.addLastSegment();
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveBuilder.prototype.computeRingBufferCurve = function(
+    inputPts, side, segGen) {
+  // simplify input line to improve performance
+  var distTol = jsts.operation.buffer.OffsetCurveBuilder
+      .simplifyTolerance(this.distance);
+  // ensure that correct side is simplified
+  if (side === jsts.geomgraph.Position.RIGHT)
+    distTol = -distTol;
+  var simp = jsts.operation.buffer.BufferInputLineSimplifier.simplify(inputPts,
+      distTol);
+
+  var n = simp.length - 1;
+  segGen.initSideSegments(simp[n - 1], simp[0], side);
+  for (var i = 1; i <= n; i++) {
+    var addStartPoint = i !== 1;
+    segGen.addNextSegment(simp[i], addStartPoint);
+  }
+  segGen.closeRing();
+};
+
+
+
+
+//    JSTS OffsetCurveSetBuilder
+
+/* Copyright (c) 2011 by The Authors.
+ * Published under the LGPL 2.1 license.
+ * See /license-notice.txt for the full text of the license notice.
+ * See /license.txt for the full text of the license.
+ */
+
+
+/**
+ * Creates all the raw offset curves for a buffer of a {@link Geometry}. Raw
+ * curves need to be noded together and polygonized to form the final buffer
+ * area.
+ *
+ * @constructor
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder = function(inputGeom, distance,
+    curveBuilder) {
+  this.inputGeom = inputGeom;
+  this.distance = distance;
+  this.curveBuilder = curveBuilder;
+
+  this.curveList = new javascript.util.ArrayList();
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder.prototype.inputGeom = null;
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder.prototype.distance = null;
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder.prototype.curveBuilder = null;
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder.prototype.curveList = null;
+
+
+/**
+ * Computes the set of raw offset curves for the buffer. Each offset curve has
+ * an attached {@link Label} indicating its left and right location.
+ *
+ * @return a Collection of SegmentStrings representing the raw buffer curves.
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder.prototype.getCurves = function() {
+  this.add(this.inputGeom);
+  return this.curveList;
+};
+
+
+/**
+ * Creates a {@link SegmentString} for a coordinate list which is a raw offset
+ * curve, and adds it to the list of buffer curves. The SegmentString is tagged
+ * with a Label giving the topology of the curve. The curve may be oriented in
+ * either direction. If the curve is oriented CW, the locations will be: <br>
+ * Left: Location.EXTERIOR <br>
+ * Right: Location.INTERIOR
+ *
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder.prototype.addCurve = function(
+    coord, leftLoc, rightLoc) {
+  // don't add null or trivial curves
+  if (coord == null || coord.length < 2)
+    return;
+  // add the edge for a coordinate list which is a raw offset curve
+  var e = new jsts.noding.NodedSegmentString(coord, new jsts.geomgraph.Label(0,
+      jsts.geom.Location.BOUNDARY, leftLoc, rightLoc));
+  this.curveList.add(e);
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder.prototype.add = function(g) {
+  if (g.isEmpty())
+    return;
+
+  if (g instanceof jsts.geom.Polygon)
+    this.addPolygon(g);
+  // LineString also handles LinearRings
+  else if (g instanceof jsts.geom.LineString)
+    this.addLineString(g);
+  else if (g instanceof jsts.geom.Point)
+    this.addPoint(g);
+  else if (g instanceof jsts.geom.MultiPoint)
+    this.addCollection(g);
+  else if (g instanceof jsts.geom.MultiLineString)
+    this.addCollection(g);
+  else if (g instanceof jsts.geom.MultiPolygon)
+    this.addCollection(g);
+  else if (g instanceof jsts.geom.GeometryCollection)
+    this.addCollection(g);
+  else
+    throw new jsts.error.IllegalArgumentError();
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder.prototype.addCollection = function(
+    gc) {
+  for (var i = 0; i < gc.getNumGeometries(); i++) {
+    var g = gc.getGeometryN(i);
+    this.add(g);
+  }
+};
+
+
+/**
+ * Add a Point to the graph.
+ *
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder.prototype.addPoint = function(p) {
+  // a zero or negative width buffer of a line/point is empty
+  if (this.distance <= 0.0)
+    return;
+  var coord = p.getCoordinates();
+  var curve = this.curveBuilder.getLineCurve(coord, this.distance);
+  this
+      .addCurve(curve, jsts.geom.Location.EXTERIOR, jsts.geom.Location.INTERIOR);
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder.prototype.addLineString = function(
+    line) {
+  // a zero or negative width buffer of a line/point is empty
+  if (this.distance <= 0.0 &&
+      !this.curveBuilder.getBufferParameters().isSingleSided())
+    return;
+  var coord = jsts.geom.CoordinateArrays.removeRepeatedPoints(line
+      .getCoordinates());
+  var curve = this.curveBuilder.getLineCurve(coord, this.distance);
+  this
+      .addCurve(curve, jsts.geom.Location.EXTERIOR, jsts.geom.Location.INTERIOR);
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder.prototype.addPolygon = function(p) {
+  var offsetDistance = this.distance;
+  var offsetSide = jsts.geomgraph.Position.LEFT;
+  if (this.distance < 0.0) {
+    offsetDistance = -this.distance;
+    offsetSide = jsts.geomgraph.Position.RIGHT;
+  }
+
+  var shell = p.getExteriorRing();
+  var shellCoord = jsts.geom.CoordinateArrays.removeRepeatedPoints(shell
+      .getCoordinates());
+  // optimization - don't bother computing buffer
+  // if the polygon would be completely eroded
+  if (this.distance < 0.0 && this.isErodedCompletely(shell, this.distance))
+    return;
+  // don't attemtp to buffer a polygon with too few distinct vertices
+  if (this.distance <= 0.0 && shellCoord.length < 3)
+    return;
+
+  this.addPolygonRing(shellCoord, offsetDistance, offsetSide,
+      jsts.geom.Location.EXTERIOR, jsts.geom.Location.INTERIOR);
+
+  for (var i = 0; i < p.getNumInteriorRing(); i++) {
+
+    var hole = p.getInteriorRingN(i);
+    var holeCoord = jsts.geom.CoordinateArrays.removeRepeatedPoints(hole
+        .getCoordinates());
+
+    // optimization - don't bother computing buffer for this hole
+    // if the hole would be completely covered
+    if (this.distance > 0.0 && this.isErodedCompletely(hole, -this.distance))
+      continue;
+
+    // Holes are topologically labelled opposite to the shell, since
+    // the interior of the polygon lies on their opposite side
+    // (on the left, if the hole is oriented CCW)
+    this.addPolygonRing(holeCoord, offsetDistance, jsts.geomgraph.Position
+        .opposite(offsetSide), jsts.geom.Location.INTERIOR,
+        jsts.geom.Location.EXTERIOR);
+  }
+};
+
+
+/**
+ * Adds an offset curve for a polygon ring. The side and left and right
+ * topological location arguments assume that the ring is oriented CW. If the
+ * ring is in the opposite orientation, the left and right locations must be
+ * interchanged and the side flipped.
+ *
+ * @param coord
+ *          the coordinates of the ring (must not contain repeated points).
+ * @param offsetDistance
+ *          the distance at which to create the buffer.
+ * @param side
+ *          the side of the ring on which to construct the buffer line.
+ * @param cwLeftLoc
+ *          the location on the L side of the ring (if it is CW).
+ * @param cwRightLoc
+ *          the location on the R side of the ring (if it is CW).
+ */
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder.prototype.addPolygonRing = function(
+    coord, offsetDistance, side, cwLeftLoc, cwRightLoc) {
+  // don't bother adding ring if it is "flat" and will disappear in the output
+  if (offsetDistance == 0.0 &&
+      coord.length < jsts.geom.LinearRing.MINIMUM_VALID_SIZE)
+    return;
+
+  var leftLoc = cwLeftLoc;
+  var rightLoc = cwRightLoc;
+  if (coord.length >= jsts.geom.LinearRing.MINIMUM_VALID_SIZE &&
+      jsts.algorithm.CGAlgorithms.isCCW(coord)) {
+    leftLoc = cwRightLoc;
+    rightLoc = cwLeftLoc;
+    side = jsts.geomgraph.Position.opposite(side);
+  }
+  var curve = this.curveBuilder.getRingCurve(coord, side, offsetDistance);
+  this.addCurve(curve, leftLoc, rightLoc);
+};
+
+
+/**
+ * The ringCoord is assumed to contain no repeated points. It may be degenerate
+ * (i.e. contain only 1, 2, or 3 points). In this case it has no area, and hence
+ * has a minimum diameter of 0.
+ *
+ * @param ringCoord
+ * @param offsetDistance
+ * @return
+ */
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder.prototype.isErodedCompletely = function(
+    ring, bufferDistance) {
+  var ringCoord = ring.getCoordinates();
+  var minDiam = 0.0;
+  // degenerate ring has no area
+  if (ringCoord.length < 4)
+    return bufferDistance < 0;
+
+  // important test to eliminate inverted triangle bug
+  // also optimizes erosion test for triangles
+  if (ringCoord.length == 4)
+    return this.isTriangleErodedCompletely(ringCoord, bufferDistance);
+
+  // if envelope is narrower than twice the buffer distance, ring is eroded
+  var env = ring.getEnvelopeInternal();
+  var envMinDimension = Math.min(env.getHeight(), env.getWidth());
+  if (bufferDistance < 0.0 && 2 * Math.abs(bufferDistance) > envMinDimension)
+    return true;
+
+  return false;
+};
+
+
+/**
+ * Tests whether a triangular ring would be eroded completely by the given
+ * buffer distance. This is a precise test. It uses the fact that the inner
+ * buffer of a triangle converges on the inCentre of the triangle (the point
+ * equidistant from all sides). If the buffer distance is greater than the
+ * distance of the inCentre from a side, the triangle will be eroded completely.
+ *
+ * This test is important, since it removes a problematic case where the buffer
+ * distance is slightly larger than the inCentre distance. In this case the
+ * triangle buffer curve "inverts" with incorrect topology, producing an
+ * incorrect hole in the buffer.
+ *
+ * @param triangleCoord
+ * @param bufferDistance
+ * @return
+ *
+ * @private
+ */
+jsts.operation.buffer.OffsetCurveSetBuilder.prototype.isTriangleErodedCompletely = function(
+    triangleCoord, bufferDistance) {
+  var tri = new jsts.geom.Triangle(triangleCoord[0], triangleCoord[1], triangleCoord[2]);
+  var inCentre = tri.inCentre();
+  var distToCentre = jsts.algorithm.CGAlgorithms.distancePointLine(inCentre,
+      tri.p0, tri.p1);
+  return distToCentre < Math.abs(bufferDistance);
+};
+
+
 
 
 
