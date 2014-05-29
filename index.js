@@ -73,7 +73,7 @@ jsts.operation = {}
 jsts.operation.buffer = {}
 jsts.noding = {}
 jsts.noding.snapround = {}
-
+jsts.algorithm = {}
 
 //  JSTS GEOJSON PARSER
 
@@ -4416,6 +4416,996 @@ jsts.noding.ScaledNoder.prototype.rescale2 = function(pts) {
 
 
 
+//    JSTS LineIntersector
+
+/* Copyright (c) 2011 by The Authors.
+ * Published under the LGPL 2.1 license.
+ * See /license-notice.txt for the full text of the license notice.
+ * See /license.txt for the full text of the license.
+ */
+
+
+
+/**
+ * A LineIntersector is an algorithm that can both test whether two line
+ * segments intersect and compute the intersection point if they do. The
+ * intersection point may be computed in a precise or non-precise manner.
+ * Computing it precisely involves rounding it to an integer. (This assumes that
+ * the input coordinates have been made precise by scaling them to an integer
+ * grid.)
+ *
+ * @constructor
+ */
+jsts.algorithm.LineIntersector = function() {
+  this.inputLines = [[], []];
+  this.intPt = [null, null];
+  // alias the intersection points for ease of reference
+  this.pa = this.intPt[0];
+  this.pb = this.intPt[1];
+  this.result = jsts.algorithm.LineIntersector.NO_INTERSECTION;
+};
+
+
+/**
+ * Indicates that line segments do not intersect
+ *
+ * @type {int}
+ */
+jsts.algorithm.LineIntersector.NO_INTERSECTION = 0;
+
+
+/**
+ * Indicates that line segments intersect in a single point
+ *
+ * @type {int}
+ */
+jsts.algorithm.LineIntersector.POINT_INTERSECTION = 1;
+
+
+/**
+ * Indicates that line segments intersect in a line segment
+ *
+ * @type {int}
+ */
+jsts.algorithm.LineIntersector.COLLINEAR_INTERSECTION = 2;
+
+
+/**
+ * Force computed intersection to be rounded to a given precision model. No
+ * getter is provided, because the precision model is not required to be
+ * specified.
+ *
+ * @param precisionModel
+ */
+jsts.algorithm.LineIntersector.prototype.setPrecisionModel = function(
+    precisionModel) {
+  this.precisionModel = precisionModel;
+};
+
+
+/**
+ * Gets an endpoint of an input segment.
+ *
+ * @param segmentIndex
+ *          the index of the input segment (0 or 1).
+ * @param ptIndex
+ *          the index of the endpoint (0 or 1).
+ * @return the specified endpoint.
+ */
+jsts.algorithm.LineIntersector.prototype.getEndpoint = function(segmentIndex,
+    ptIndex) {
+  return this.inputLines[segmentIndex][ptIndex];
+};
+
+
+/**
+ * Computes the "edge distance" of an intersection point p along a segment. The
+ * edge distance is a metric of the point along the edge. The metric used is a
+ * robust and easy to compute metric function. It is <b>not</b> equivalent to
+ * the usual Euclidean metric. It relies on the fact that either the x or the y
+ * ordinates of the points in the edge are unique, depending on whether the edge
+ * is longer in the horizontal or vertical direction.
+ * <p>
+ * NOTE: This function may produce incorrect distances for inputs where p is not
+ * precisely on p1-p2 (E.g. p = (139,9) p1 = (139,10), p2 = (280,1) produces
+ * distanct 0.0, which is incorrect.
+ * <p>
+ * My hypothesis is that the function is safe to use for points which are the
+ * result of <b>rounding</b> points which lie on the line, but not safe to use
+ * for <b>truncated</b> points.
+ *
+ * @param {Coordinate}
+ *          p
+ * @param {Coordinate}
+ *          p0
+ * @param {Coordinate}
+ *          p1
+ * @return {double}
+ */
+jsts.algorithm.LineIntersector.computeEdgeDistance = function(p, p0, p1) {
+  var dx = Math.abs(p1.x - p0.x);
+  var dy = Math.abs(p1.y - p0.y);
+
+  var dist = -1.0; // sentinel value
+  if (p.equals(p0)) {
+    dist = 0.0;
+  } else if (p.equals(p1)) {
+    if (dx > dy) {
+      dist = dx;
+    } else {
+      dist = dy;
+    }
+  } else {
+    var pdx = Math.abs(p.x - p0.x);
+    var pdy = Math.abs(p.y - p0.y);
+    if (dx > dy) {
+      dist = pdx;
+    } else {
+      dist = pdy;
+    }
+    // <FIX>
+    // hack to ensure that non-endpoints always have a non-zero distance
+    if (dist === 0.0 && !p.equals(p0)) {
+      dist = Math.max(pdx, pdy);
+    }
+  }
+  if (dist === 0.0 && !p.equals(p0)) {
+    throw new jsts.error.IllegalArgumentError('Bad distance calculation');
+  }
+  return dist;
+};
+
+
+/**
+ * This function is non-robust, since it may compute the square of large
+ * numbers. Currently not sure how to improve this.
+ *
+ * @param {Coordinate}
+ *          p
+ * @param {Coordinate}
+ *          p0
+ * @param {Coordinate}
+ *          p1
+ * @return {double}
+ */
+jsts.algorithm.LineIntersector.nonRobustComputeEdgeDistance = function(p, p1,
+    p2) {
+  var dx = p.x - p1.x;
+  var dy = p.y - p1.y;
+  var dist = Math.sqrt(dx * dx + dy * dy); // dummy value
+  if (!(dist === 0.0 && !p.equals(p1))) {
+    throw new jsts.error.IllegalArgumentError('Invalid distance calculation');
+  }
+  return dist;
+};
+
+
+/**
+ * @protected
+ * @type {int}
+ */
+jsts.algorithm.LineIntersector.prototype.result = null;
+
+
+/**
+ * @protected
+ * @type {Coordinate[][] }
+ */
+jsts.algorithm.LineIntersector.prototype.inputLines = null;
+
+
+/**
+ * @protected
+ * @type {Coordinate[]}
+ */
+jsts.algorithm.LineIntersector.prototype.intPt = null;
+
+
+/**
+ * The indexes of the endpoints of the intersection lines, in order along the
+ * corresponding line
+ */
+/**
+ * @protected
+ * @type {int[][]}
+ */
+jsts.algorithm.LineIntersector.prototype.intLineIndex = null;
+
+
+/**
+ * @protected
+ * @type {boolean}
+ */
+jsts.algorithm.LineIntersector.prototype._isProper = null;
+
+
+/**
+ * @protected
+ * @type {Coordinate}
+ */
+jsts.algorithm.LineIntersector.prototype.pa = null;
+
+
+/**
+ * @protected
+ * @type {Coordinate}
+ */
+jsts.algorithm.LineIntersector.prototype.pb = null;
+
+
+/**
+ * @protected
+ * @type {PrecisionModel}
+ */
+jsts.algorithm.LineIntersector.prototype.precisionModel = null;
+
+
+/**
+ * Compute the intersection of a point p and the line p1-p2. This function
+ * computes the boolean value of the hasIntersection test. The actual value of
+ * the intersection (if there is one) is equal to the value of <code>p</code>.
+ *
+ * @param {Coordinate}
+ *          p
+ * @param {Coordinate}
+ *          p1
+ * @param {Coordinate}
+ *          p2
+ */
+jsts.algorithm.LineIntersector.prototype.computeIntersection = function(p, p1, p2) {
+  throw new jsts.error.AbstractMethodInvocationError();
+};
+
+
+/**
+ * @return {boolean}
+ * @protected
+ */
+jsts.algorithm.LineIntersector.prototype.isCollinear = function() {
+  return this.result === jsts.algorithm.LineIntersector.COLLINEAR_INTERSECTION;
+};
+
+
+/**
+ * Computes the intersection of the lines p1-p2 and p3-p4. This function
+ * computes both the boolean value of the hasIntersection test and the
+ * (approximate) value of the intersection point itself (if there is one).
+ *
+ * @param {Coordinate}
+ *          p1
+ * @param {Coordinate}
+ *          p2
+ * @param {Coordinate}
+ *          p3
+ * @param {Coordinate}
+ *          p4
+ */
+jsts.algorithm.LineIntersector.prototype.computeIntersection = function(p1, p2,
+    p3, p4) {
+  this.inputLines[0][0] = p1;
+  this.inputLines[0][1] = p2;
+  this.inputLines[1][0] = p3;
+  this.inputLines[1][1] = p4;
+  this.result = this.computeIntersect(p1, p2, p3, p4);
+};
+
+
+/**
+ * @param {Coordinate}
+ *          p1
+ * @param {Coordinate}
+ *          p2
+ * @param {Coordinate}
+ *          q1
+ * @param {Coordinate}
+ *          q2
+ * @return {int}
+ * @protected
+ */
+jsts.algorithm.LineIntersector.prototype.computeIntersect = function(p1, p2,
+    q1, q2) {
+  throw new jsts.error.AbstractMethodInvocationError();
+};
+
+
+/**
+ * @return {boolean}
+ * @protected
+ */
+jsts.algorithm.LineIntersector.prototype.isEndPoint = function() {
+  return this.hasIntersection() && !this._isProper;
+};
+
+
+/**
+ * Tests whether the input geometries intersect.
+ *
+ * @return {boolean} true if the input geometries intersect.
+ */
+jsts.algorithm.LineIntersector.prototype.hasIntersection = function() {
+  return this.result !== jsts.algorithm.LineIntersector.NO_INTERSECTION;
+};
+
+
+/**
+ * Returns the number of intersection points found. This will be either 0, 1 or
+ * 2.
+ *
+ * @return {int}
+ */
+jsts.algorithm.LineIntersector.prototype.getIntersectionNum = function() {
+  return this.result;
+};
+
+
+/**
+ * Returns the intIndex'th intersection point
+ *
+ * @param {int}
+ *          intIndex is 0 or 1.
+ *
+ * @return {Coordinate} the intIndex'th intersection point.
+ */
+jsts.algorithm.LineIntersector.prototype.getIntersection = function(intIndex) {
+  return this.intPt[intIndex];
+};
+
+
+/**
+ * @protected
+ */
+jsts.algorithm.LineIntersector.prototype.computeIntLineIndex = function() {
+  if (this.intLineIndex === null) {
+    this.intLineIndex = [[], []];
+    this.computeIntLineIndex(0);
+    this.computeIntLineIndex(1);
+  }
+};
+
+
+/**
+ * Test whether a point is a intersection point of two line segments. Note that
+ * if the intersection is a line segment, this method only tests for equality
+ * with the endpoints of the intersection segment. It does <b>not</b> return
+ * true if the input point is internal to the intersection segment.
+ *
+ * @param {Coordinate}
+ *          pt
+ * @return {boolean} true if the input point is one of the intersection points.
+ */
+jsts.algorithm.LineIntersector.prototype.isIntersection = function(pt) {
+  var i;
+  for (i = 0; i < this.result; i++) {
+    if (this.intPt[i].equals2D(pt)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+
+/**
+ * Tests whether either intersection point is an interior point of one of the
+ * input segments.
+ *
+ * @return {boolean} <code>true</code> if either intersection point is in the
+ *         interior of one of the input segments.
+ */
+jsts.algorithm.LineIntersector.prototype.isInteriorIntersection = function() {
+  if (arguments.length === 1) {
+    return this.isInteriorIntersection2.apply(this, arguments);
+  }
+
+  if (this.isInteriorIntersection(0)) {
+    return true;
+  }
+  if (this.isInteriorIntersection(1)) {
+    return true;
+  }
+  return false;
+};
+
+
+/**
+ * Tests whether either intersection point is an interior point of the specified
+ * input segment.
+ *
+ * @param {[]} inputLineIndex
+ * @return {boolean} <code>true</code> if either intersection point is in the
+ *         interior of the input segment.
+ */
+jsts.algorithm.LineIntersector.prototype.isInteriorIntersection2 = function(
+    inputLineIndex) {
+  var i;
+  for (i = 0; i < this.result; i++) {
+    if (!(this.intPt[i].equals2D(this.inputLines[inputLineIndex][0]) || this.intPt[i]
+        .equals2D(this.inputLines[inputLineIndex][1]))) {
+      return true;
+    }
+  }
+  return false;
+};
+
+
+/**
+ * Tests whether an intersection is proper. <br>
+ * The intersection between two line segments is considered proper if they
+ * intersect in a single point in the interior of both segments (e.g. the
+ * intersection is a single point and is not equal to any of the endpoints).
+ * <p>
+ * The intersection between a point and a line segment is considered proper if
+ * the point lies in the interior of the segment (e.g. is not equal to either of
+ * the endpoints).
+ *
+ * @return {boolean} true if the intersection is proper.
+ */
+jsts.algorithm.LineIntersector.prototype.isProper = function() {
+  return this.hasIntersection() && this._isProper;
+};
+
+
+/**
+ * Computes the intIndex'th intersection point in the direction of a specified
+ * input line segment
+ *
+ * @param {int}
+ *          segmentIndex is 0 or 1.
+ * @param {int}
+ *          intIndex is 0 or 1.
+ *
+ * @return {Coordinate} the intIndex'th intersection point in the direction of
+ *         the specified input line segment.
+ */
+jsts.algorithm.LineIntersector.prototype.getIntersectionAlongSegment = function(
+    segmentIndex, intIndex) {
+  // lazily compute int line array
+  this.computeIntLineIndex();
+  return this.intPt[intLineIndex[segmentIndex][intIndex]];
+};
+
+
+/**
+ * Computes the index of the intIndex'th intersection point in the direction of
+ * a specified input line segment
+ *
+ * @param {int}
+ *          segmentIndex is 0 or 1.
+ * @param {int}
+ *          intIndex is 0 or 1.
+ *
+ * @return {int} the index of the intersection point along the segment (0 or 1).
+ */
+jsts.algorithm.LineIntersector.prototype.getIndexAlongSegment = function(
+    segmentIndex, intIndex) {
+  this.computeIntLineIndex();
+  return this.intLineIndex[segmentIndex][intIndex];
+};
+
+
+/**
+ * @param {int}
+ *          segmentIndex
+ * @protected
+ */
+jsts.algorithm.LineIntersector.prototype.computeIntLineIndex = function(
+    segmentIndex) {
+  var dist0 = this.getEdgeDistance(segmentIndex, 0);
+  var dist1 = this.getEdgeDistance(segmentIndex, 1);
+  if (dist0 > dist1) {
+    this.intLineIndex[segmentIndex][0] = 0;
+    this.intLineIndex[segmentIndex][1] = 1;
+  } else {
+    this.intLineIndex[segmentIndex][0] = 1;
+    this.intLineIndex[segmentIndex][1] = 0;
+  }
+};
+
+
+/**
+ * Computes the "edge distance" of an intersection point along the specified
+ * input line segment.
+ *
+ * @param {int}
+ *          segmentIndex is 0 or 1.
+ * @param {int}
+ *          intIndex is 0 or 1.
+ *
+ * @return {double} the edge distance of the intersection point.
+ */
+jsts.algorithm.LineIntersector.prototype.getEdgeDistance = function(
+    segmentIndex, intIndex) {
+  var dist = jsts.algorithm.LineIntersector.computeEdgeDistance(
+      this.intPt[intIndex], this.inputLines[segmentIndex][0],
+      this.inputLines[segmentIndex][1]);
+  return dist;
+};
+
+
+
+
+//    JSTS RobustLineIntersector
+
+/* Copyright (c) 2011 by The Authors.
+ * Published under the LGPL 2.1 license.
+ * See /license-notice.txt for the full text of the license notice.
+ * See /license.txt for the full text of the license.
+ */
+
+
+/**
+ * @requires jsts/algorithm/LineIntersector.js
+ */
+
+
+/**
+ * A robust version of {@LineIntersector}.
+ *
+ * @constructor
+ * @augments jsts.algorithm.LineIntersector
+ */
+jsts.algorithm.RobustLineIntersector = function() {
+  console.log('!!!!!!!!!!',jsts.algorithm.RobustLineIntersector.prototype)
+  jsts.algorithm.RobustLineIntersector.prototype.constructor.call(this);
+};
+
+jsts.algorithm.RobustLineIntersector.prototype = new jsts.algorithm.LineIntersector();
+
+
+/**
+ * @param {Coordinate}
+ *          p
+ * @param {Coordinate}
+ *          p1
+ * @param {Coordinate}
+ *          p2
+ */
+jsts.algorithm.RobustLineIntersector.prototype.computeIntersection = function(
+    p, p1, p2) {
+
+  if (arguments.length === 4) {
+    jsts.algorithm.LineIntersector.prototype.computeIntersection.apply(this, arguments);
+    return;
+  }
+
+  this._isProper = false;
+  // do between check first, since it is faster than the orientation test
+  if (jsts.geom.Envelope.intersects(p1, p2, p)) {
+    if ((jsts.algorithm.CGAlgorithms.orientationIndex(p1, p2, p) === 0) &&
+        (jsts.algorithm.CGAlgorithms.orientationIndex(p2, p1, p) === 0)) {
+      this._isProper = true;
+      if (p.equals(p1) || p.equals(p2)) {
+        this._isProper = false;
+      }
+      this.result = jsts.algorithm.LineIntersector.POINT_INTERSECTION;
+      return;
+    }
+  }
+  this.result = jsts.algorithm.LineIntersector.NO_INTERSECTION;
+};
+
+
+/**
+ * @param {Coordinate}
+ *          p1
+ * @param {Coordinate}
+ *          p2
+ * @param {Coordinate}
+ *          q1
+ * @param {Coordinate}
+ *          q2
+ * @return {Number}
+ * @protected
+ */
+jsts.algorithm.RobustLineIntersector.prototype.computeIntersect = function(p1,
+    p2, q1, q2) {
+  this._isProper = false;
+
+  // first try a fast test to see if the envelopes of the lines intersect
+  if (!jsts.geom.Envelope.intersects(p1, p2, q1, q2)) {
+    return jsts.algorithm.LineIntersector.NO_INTERSECTION;
+  }
+
+  // for each endpoint, compute which side of the other segment it lies
+  // if both endpoints lie on the same side of the other segment,
+  // the segments do not intersect
+  var Pq1 = jsts.algorithm.CGAlgorithms.orientationIndex(p1, p2, q1);
+  var Pq2 = jsts.algorithm.CGAlgorithms.orientationIndex(p1, p2, q2);
+
+  if ((Pq1 > 0 && Pq2 > 0) || (Pq1 < 0 && Pq2 < 0)) {
+    return jsts.algorithm.LineIntersector.NO_INTERSECTION;
+  }
+
+  var Qp1 = jsts.algorithm.CGAlgorithms.orientationIndex(q1, q2, p1);
+  var Qp2 = jsts.algorithm.CGAlgorithms.orientationIndex(q1, q2, p2);
+
+  if ((Qp1 > 0 && Qp2 > 0) || (Qp1 < 0 && Qp2 < 0)) {
+    return jsts.algorithm.LineIntersector.NO_INTERSECTION;
+  }
+
+  var collinear = Pq1 === 0 && Pq2 === 0 && Qp1 === 0 && Qp2 === 0;
+  if (collinear) {
+    return this.computeCollinearIntersection(p1, p2, q1, q2);
+  }
+
+  /**
+   * At this point we know that there is a single intersection point (since the
+   * lines are not collinear).
+   */
+
+  /**
+   * Check if the intersection is an endpoint. If it is, copy the endpoint as
+   * the intersection point. Copying the point rather than computing it ensures
+   * the point has the exact value, which is important for robustness. It is
+   * sufficient to simply check for an endpoint which is on the other line,
+   * since at this point we know that the inputLines must intersect.
+   */
+  if (Pq1 === 0 || Pq2 === 0 || Qp1 === 0 || Qp2 === 0) {
+    this._isProper = false;
+
+    /**
+     * Check for two equal endpoints. This is done explicitly rather than by the
+     * orientation tests below in order to improve robustness.
+     *
+     * [An example where the orientation tests fail to be consistent is the
+     * following (where the true intersection is at the shared endpoint POINT
+     * (19.850257749638203 46.29709338043669)
+     *
+     * LINESTRING ( 19.850257749638203 46.29709338043669, 20.31970698357233
+     * 46.76654261437082 ) and LINESTRING ( -48.51001596420236
+     * -22.063180333403878, 19.850257749638203 46.29709338043669 )
+     *
+     * which used to produce the INCORRECT result: (20.31970698357233,
+     * 46.76654261437082, NaN)
+     *
+     */
+    if (p1.equals2D(q1) || p1.equals2D(q2)) {
+      this.intPt[0] = p1;
+    } else if (p2.equals2D(q1) || p2.equals2D(q2)) {
+      this.intPt[0] = p2;
+    }
+
+    /**
+     * Now check to see if any endpoint lies on the interior of the other
+     * segment.
+     */
+    else if (Pq1 === 0) {
+      this.intPt[0] = new jsts.geom.Coordinate(q1);
+    } else if (Pq2 === 0) {
+      this.intPt[0] = new jsts.geom.Coordinate(q2);
+    } else if (Qp1 === 0) {
+      this.intPt[0] = new jsts.geom.Coordinate(p1);
+    } else if (Qp2 === 0) {
+      this.intPt[0] = new jsts.geom.Coordinate(p2);
+    }
+  } else {
+    this._isProper = true;
+    this.intPt[0] = this.intersection(p1, p2, q1, q2);
+  }
+  return jsts.algorithm.LineIntersector.POINT_INTERSECTION;
+};
+
+
+/**
+ * @param {Coordinate}
+ *          p1
+ * @param {Coordinate}
+ *          p2
+ * @param {Coordinate}
+ *          q1
+ * @param {Coordinate}
+ *          q2
+ * @return {Number}
+ * @private
+ */
+jsts.algorithm.RobustLineIntersector.prototype.computeCollinearIntersection = function(
+    p1, p2, q1, q2) {
+  var p1q1p2 = jsts.geom.Envelope.intersects(p1, p2, q1);
+  var p1q2p2 = jsts.geom.Envelope.intersects(p1, p2, q2);
+  var q1p1q2 = jsts.geom.Envelope.intersects(q1, q2, p1);
+  var q1p2q2 = jsts.geom.Envelope.intersects(q1, q2, p2);
+
+  if (p1q1p2 && p1q2p2) {
+    this.intPt[0] = q1;
+    this.intPt[1] = q2;
+    return jsts.algorithm.LineIntersector.COLLINEAR_INTERSECTION;
+  }
+  if (q1p1q2 && q1p2q2) {
+    this.intPt[0] = p1;
+    this.intPt[1] = p2;
+    return jsts.algorithm.LineIntersector.COLLINEAR_INTERSECTION;
+  }
+  if (p1q1p2 && q1p1q2) {
+    this.intPt[0] = q1;
+    this.intPt[1] = p1;
+    return q1.equals(p1) && !p1q2p2 && !q1p2q2 ? jsts.algorithm.LineIntersector.POINT_INTERSECTION
+        : jsts.algorithm.LineIntersector.COLLINEAR_INTERSECTION;
+  }
+  if (p1q1p2 && q1p2q2) {
+    this.intPt[0] = q1;
+    this.intPt[1] = p2;
+    return q1.equals(p2) && !p1q2p2 && !q1p1q2 ? jsts.algorithm.LineIntersector.POINT_INTERSECTION
+        : jsts.algorithm.LineIntersector.COLLINEAR_INTERSECTION;
+  }
+  if (p1q2p2 && q1p1q2) {
+    this.intPt[0] = q2;
+    this.intPt[1] = p1;
+    return q2.equals(p1) && !p1q1p2 && !q1p2q2 ? jsts.algorithm.LineIntersector.POINT_INTERSECTION
+        : jsts.algorithm.LineIntersector.COLLINEAR_INTERSECTION;
+  }
+  if (p1q2p2 && q1p2q2) {
+    this.intPt[0] = q2;
+    this.intPt[1] = p2;
+    return q2.equals(p2) && !p1q1p2 && !q1p1q2 ? jsts.algorithm.LineIntersector.POINT_INTERSECTION
+        : jsts.algorithm.LineIntersector.COLLINEAR_INTERSECTION;
+  }
+  return jsts.algorithm.LineIntersector.NO_INTERSECTION;
+};
+
+
+/**
+ * This method computes the actual value of the intersection point. To obtain
+ * the maximum precision from the intersection calculation, the coordinates are
+ * normalized by subtracting the minimum ordinate values (in absolute value).
+ * This has the effect of removing common significant digits from the
+ * calculation to maintain more bits of precision.
+ *
+ * @param {Coordinate}
+ *          p1
+ * @param {Coordinate}
+ *          p2
+ * @param {Coordinate}
+ *          q1
+ * @param {Coordinate}
+ *          q2
+ * @return {Coordinate}
+ * @private
+ */
+jsts.algorithm.RobustLineIntersector.prototype.intersection = function(p1, p2,
+    q1, q2) {
+  var intPt = this.intersectionWithNormalization(p1, p2, q1, q2);
+
+  /**
+   * Due to rounding it can happen that the computed intersection is outside the
+   * envelopes of the input segments. Clearly this is inconsistent. This code
+   * checks this condition and forces a more reasonable answer
+   *
+   * MD - May 4 2005 - This is still a problem. Here is a failure case:
+   *
+   * LINESTRING (2089426.5233462777 1180182.3877339689, 2085646.6891757075
+   * 1195618.7333999649) LINESTRING (1889281.8148903656 1997547.0560044837,
+   * 2259977.3672235999 483675.17050843034) int point =
+   * (2097408.2633752143,1144595.8008114607)
+   *
+   * MD - Dec 14 2006 - This does not seem to be a failure case any longer
+   */
+  if (!this.isInSegmentEnvelopes(intPt)) {
+    // System.out.println("Intersection outside segment envelopes: " + intPt);
+    // System.out.println("Segments: " + this);
+    // compute a safer result
+    intPt = jsts.algorithm.CentralEndpointIntersector.getIntersection(p1, p2, q1, q2);
+    // System.out.println("Snapped to " + intPt);
+  }
+
+  if (this.precisionModel !== null) {
+    this.precisionModel.makePrecise(intPt);
+  }
+
+  return intPt;
+};
+
+
+/**
+ * @param {Coordinate}
+ *          p1
+ * @param {Coordinate}
+ *          p2
+ * @param {Coordinate}
+ *          q1
+ * @param {Coordinate}
+ *          q2
+ * @return {Coordinate}
+ * @private
+ */
+jsts.algorithm.RobustLineIntersector.prototype.intersectionWithNormalization = function(
+    p1, p2, q1, q2) {
+  var n1 = new jsts.geom.Coordinate(p1);
+  var n2 = new jsts.geom.Coordinate(p2);
+  var n3 = new jsts.geom.Coordinate(q1);
+  var n4 = new jsts.geom.Coordinate(q2);
+  var normPt = new jsts.geom.Coordinate();
+  this.normalizeToEnvCentre(n1, n2, n3, n4, normPt);
+
+  var intPt = this.safeHCoordinateIntersection(n1, n2, n3, n4);
+
+  intPt.x += normPt.x;
+  intPt.y += normPt.y;
+
+  return intPt;
+};
+
+
+/**
+ * Computes a segment intersection using homogeneous coordinates. Round-off
+ * error can cause the raw computation to fail, (usually due to the segments
+ * being approximately parallel). If this happens, a reasonable approximation is
+ * computed instead.
+ *
+ * @param {Coordinate}
+ *          p1 a segment endpoint.
+ * @param {Coordinate}
+ *          p2 a segment endpoint.
+ * @param {Coordinate}
+ *          q1 a segment endpoint.
+ * @param {Coordinate}
+ *          q2 a segment endpoint.
+ * @return {Coordinate} the computed intersection point.
+ * @private
+ */
+jsts.algorithm.RobustLineIntersector.prototype.safeHCoordinateIntersection = function(
+    p1, p2, q1, q2) {
+  var intPt = null;
+  try {
+    intPt = jsts.algorithm.HCoordinate.intersection(p1, p2, q1, q2);
+  } catch (e) {
+    if (e instanceof jsts.error.NotRepresentableError) {
+      // System.out.println("Not calculable: " + this);
+      // compute an approximate result
+      intPt = jsts.algorithm.CentralEndpointIntersector.getIntersection(p1, p2,
+          q1, q2);
+      // System.out.println("Snapped to " + intPt);
+    } else {
+      throw e;
+    }
+  }
+
+  return intPt;
+};
+
+
+/**
+ * Normalize the supplied coordinates so that their minimum ordinate values lie
+ * at the origin. NOTE: this normalization technique appears to cause large
+ * errors in the position of the intersection point for some cases.
+ *
+ * @param {Coordinate}
+ *          n1
+ * @param {Coordinate}
+ *          n2
+ * @param {Coordinate}
+ *          n3
+ * @param {Coordinate}
+ *          n4
+ * @param {Coordinate}
+ *          normPt
+ */
+jsts.algorithm.RobustLineIntersector.prototype.normalizeToMinimum = function(
+    n1, n2, n3, n4, normPt) {
+  normPt.x = this.smallestInAbsValue(n1.x, n2.x, n3.x, n4.x);
+  normPt.y = this.smallestInAbsValue(n1.y, n2.y, n3.y, n4.y);
+  n1.x -= normPt.x;
+  n1.y -= normPt.y;
+  n2.x -= normPt.x;
+  n2.y -= normPt.y;
+  n3.x -= normPt.x;
+  n3.y -= normPt.y;
+  n4.x -= normPt.x;
+  n4.y -= normPt.y;
+};
+
+
+/**
+ * Normalize the supplied coordinates to so that the midpoint of their
+ * intersection envelope lies at the origin.
+ *
+ * @param {Coordinate}
+ *          n00
+ * @param {Coordinate}
+ *          n01
+ * @param {Coordinate}
+ *          n10
+ * @param {Coordinate}
+ *          n11
+ * @param {Coordinate}
+ *          normPt
+ */
+jsts.algorithm.RobustLineIntersector.prototype.normalizeToEnvCentre = function(
+    n00, n01, n10, n11, normPt) {
+  var minX0 = n00.x < n01.x ? n00.x : n01.x;
+  var minY0 = n00.y < n01.y ? n00.y : n01.y;
+  var maxX0 = n00.x > n01.x ? n00.x : n01.x;
+  var maxY0 = n00.y > n01.y ? n00.y : n01.y;
+
+  var minX1 = n10.x < n11.x ? n10.x : n11.x;
+  var minY1 = n10.y < n11.y ? n10.y : n11.y;
+  var maxX1 = n10.x > n11.x ? n10.x : n11.x;
+  var maxY1 = n10.y > n11.y ? n10.y : n11.y;
+
+  var intMinX = minX0 > minX1 ? minX0 : minX1;
+  var intMaxX = maxX0 < maxX1 ? maxX0 : maxX1;
+  var intMinY = minY0 > minY1 ? minY0 : minY1;
+  var intMaxY = maxY0 < maxY1 ? maxY0 : maxY1;
+
+  var intMidX = (intMinX + intMaxX) / 2.0;
+  var intMidY = (intMinY + intMaxY) / 2.0;
+  normPt.x = intMidX;
+  normPt.y = intMidY;
+
+  /*
+  // equilavalent code using more modular but slower method
+  Envelope env0 = new Envelope(n00, n01);
+  Envelope env1 = new Envelope(n10, n11);
+  Envelope intEnv = env0.intersection(env1);
+  Coordinate intMidPt = intEnv.centre();
+
+  normPt.x = intMidPt.x;
+  normPt.y = intMidPt.y;
+  */
+
+  n00.x -= normPt.x;
+  n00.y -= normPt.y;
+  n01.x -= normPt.x;
+  n01.y -= normPt.y;
+  n10.x -= normPt.x;
+  n10.y -= normPt.y;
+  n11.x -= normPt.x;
+  n11.y -= normPt.y;
+};
+
+
+/**
+ * @param {double}
+ *          x1
+ * @param {double}
+ *          x2
+ * @param {double}
+ *          x3
+ * @param {double}
+ *          x4
+ * @return {double}
+ */
+jsts.algorithm.RobustLineIntersector.prototype.smallestInAbsValue = function(
+    x1, x2, x3, x4) {
+  var x = x1;
+  var xabs = Math.abs(x);
+  if (Math.abs(x2) < xabs) {
+    x = x2;
+    xabs = Math.abs(x2);
+  }
+  if (Math.abs(x3) < xabs) {
+    x = x3;
+    xabs = Math.abs(x3);
+  }
+  if (Math.abs(x4) < xabs) {
+    x = x4;
+  }
+  return x;
+};
+
+
+/**
+ * Test whether a point lies in the envelopes of both input segments. A
+ * correctly computed intersection point should return <code>true</code> for
+ * this test. Since this test is for debugging purposes only, no attempt is made
+ * to optimize the envelope test.
+ *
+ * @param {Coordinate}
+ *          intPt
+ * @return {boolean} <code>true</code> if the input point lies within both
+ *         input segment envelopes.
+ * @private
+ */
+jsts.algorithm.RobustLineIntersector.prototype.isInSegmentEnvelopes = function(
+    intPt) {
+  var env0 = new jsts.geom.Envelope(this.inputLines[0][0],
+      this.inputLines[0][1]);
+  var env1 = new jsts.geom.Envelope(this.inputLines[1][0],
+      this.inputLines[1][1]);
+  return env0.contains(intPt) && env1.contains(intPt);
+};
+
+
+
+
 //    JSTS MCIndexSnapRounder
 
 /* Copyright (c) 2011 by The Authors.
@@ -4565,3 +5555,28 @@ jsts.noding.snapround.MCIndexSnapRounder.prototype.computeVertexSnaps2 = functio
     }
   }
 };
+
+
+
+//    JSTS Javascript Utils
+
+(function(c){var d,b,a,h,e,f={".js":[],".json":[],".css":[],".html":[]};h=function(a){a=Error("Could not find module '"+a+"'");a.code="MODULE_NOT_FOUND";return a};e=function(a,l,b){var e,h;if("function"===typeof a[l+b])return l+b;for(e=0;h=f[b][e];++e)if("function"===typeof a[l+h])return l+h;return null};d=function(a,l,k,c,f){var g,n;k=k.split("/");g=k.pop();if("."===g||".."===g)k.push(g),g="";for(;null!=(n=k.shift());)if(n&&"."!==n&&(".."===n?a=l.pop():(l.push(a),a=a[n]),!a))throw h(c);g&&"function"!==
+typeof a[g]&&((k=e(a,g,".js"))||(k=e(a,g,".json")),k||(k=e(a,g,".css")),k||(k=e(a,g,".html")),k?g=k:2!==f&&"object"===typeof a[g]&&(l.push(a),a=a[g],g=""));if(!g)return 1!==f&&a[":mainpath:"]?d(a,l,a[":mainpath:"],c,1):d(a,l,"index",c,2);f=a[g];if(!f)throw h(c);if(f.hasOwnProperty("module"))return f.module.exports;c={};f.module=g={exports:c};f.call(c,c,g,b(a,l));return g.exports};a=function(a,l,b){var e,f=b;e=b.charAt(0);var g=0;if("/"===e)f=f.slice(1),a=c["/"],l=[];else if("."!==e){e=f.split("/",
+1)[0];a=c[e];if(!a)throw h(b);l=[];f=f.slice(e.length+1);f||((f=a[":mainpath:"])?g=1:(f="index",g=2))}return d(a,l,f,b,g)};b=function(b,l){return function(e){return a(b,[].concat(l),e)}};return b(c,[])})({"javascript.util":{lib:{"ArrayList.js":function(c,d,b){function a(a){this.array=[];a instanceof h&&this.addAll(a)}var h=b("./Collection");c=b("./List");var e=b("./OperationNotSupported"),f=b("./NoSuchElementException"),m=b("./IndexOutOfBoundsException");a.prototype=new c;a.prototype.array=null;a.prototype.add=
+function(a){this.array.push(a);return!0};a.prototype.addAll=function(a){for(a=a.iterator();a.hasNext();)this.add(a.next());return!0};a.prototype.set=function(a,b){var e=this.array[a];this.array[a]=b;return e};a.prototype.iterator=function(){return new a.Iterator(this)};a.prototype.get=function(a){if(0>a||a>=this.size())throw new m;return this.array[a]};a.prototype.isEmpty=function(){return 0===this.array.length};a.prototype.size=function(){return this.array.length};a.prototype.toArray=function(){for(var a=
+[],b=0,e=this.array.length;b<e;b++)a.push(this.array[b]);return a};a.prototype.remove=function(a){for(var b=!1,e=0,m=this.array.length;e<m;e++)if(this.array[e]===a){this.array.splice(e,1);b=!0;break}return b};a.Iterator=function(a){this.arrayList=a};a.Iterator.prototype.arrayList=null;a.Iterator.prototype.position=0;a.Iterator.prototype.next=function(){if(this.position===this.arrayList.size())throw new f;return this.arrayList.get(this.position++)};a.Iterator.prototype.hasNext=function(){return this.position<
+this.arrayList.size()?!0:!1};a.Iterator.prototype.remove=function(){throw new e;};d.exports=a},"Arrays.js":function(c,d,b){function a(){}a.sort=function(){var a=arguments[0],b,f,m;if(1===arguments.length)a.sort();else if(2===arguments.length)f=arguments[1],m=function(a,b){return f.compare(a,b)},a.sort(m);else if(3===arguments.length)for(b=a.slice(arguments[1],arguments[2]),b.sort(),m=a.slice(0,arguments[1]).concat(b,a.slice(arguments[2],a.length)),a.splice(0,a.length),b=0;b<m.length;b++)a.push(m[b]);
+else if(4===arguments.length)for(b=a.slice(arguments[1],arguments[2]),f=arguments[3],m=function(a,b){return f.compare(a,b)},b.sort(m),m=a.slice(0,arguments[1]).concat(b,a.slice(arguments[2],a.length)),a.splice(0,a.length),b=0;b<m.length;b++)a.push(m[b])};a.asList=function(a){for(var b=new javascript.util.ArrayList,f=0,m=a.length;f<m;f++)b.add(a[f]);return b};d.exports=a},"Collection.js":function(c,d,b){function a(){}b("./Iterator");a.prototype.add=function(a){};a.prototype.addAll=function(a){};a.prototype.isEmpty=
+function(){};a.prototype.iterator=function(){};a.prototype.size=function(){};a.prototype.toArray=function(){};a.prototype.remove=function(a){};d.exports=a},"EmptyStackException.js":function(c,d,b){function a(a){this.message=a||""}a.prototype=Error();a.prototype.name="EmptyStackException";d.exports=a},"HashMap.js":function(c,d,b){function a(){this.object={}}c=b("./Map");var h=b("./ArrayList");a.prototype=new c;a.prototype.object=null;a.prototype.get=function(a){return this.object[a]||null};a.prototype.put=
+function(a,b){return this.object[a]=b};a.prototype.values=function(){var a=new h,b;for(b in this.object)this.object.hasOwnProperty(b)&&a.add(this.object[b]);return a};a.prototype.size=function(){return this.values().size()};d.exports=a},"HashSet.js":function(c,d,b){function a(a){this.array=[];a instanceof h&&this.addAll(a)}var h=b("./Collection");c=b("./Set");var e=b("./OperationNotSupported"),f=b("./NoSuchElementException");a.prototype=new c;a.prototype.array=null;a.prototype.contains=function(a){for(var b=
+0,e=this.array.length;b<e;b++)if(this.array[b]===a)return!0;return!1};a.prototype.add=function(a){if(this.contains(a))return!1;this.array.push(a);return!0};a.prototype.addAll=function(a){for(a=a.iterator();a.hasNext();)this.add(a.next());return!0};a.prototype.remove=function(a){throw new e;};a.prototype.size=function(){return this.array.length};a.prototype.isEmpty=function(){return 0===this.array.length};a.prototype.toArray=function(){for(var a=[],b=0,e=this.array.length;b<e;b++)a.push(this.array[b]);
+return a};a.prototype.iterator=function(){return new a.Iterator(this)};a.Iterator=function(a){this.hashSet=a};a.Iterator.prototype.hashSet=null;a.Iterator.prototype.position=0;a.Iterator.prototype.next=function(){if(this.position===this.hashSet.size())throw new f;return this.hashSet.array[this.position++]};a.Iterator.prototype.hasNext=function(){return this.position<this.hashSet.size()?!0:!1};a.Iterator.prototype.remove=function(){throw new javascript.util.OperationNotSupported;};d.exports=a},"IndexOutOfBoundsException.js":function(c,
+d,b){function a(a){this.message=a||""}a.prototype=Error();a.prototype.name="IndexOutOfBoundsException";d.exports=a},"Iterator.js":function(c,d,b){function a(){}a.prototype.hasNext=function(){};a.prototype.next=function(){};a.prototype.remove=function(){};d.exports=a},"List.js":function(c,d,b){function a(){}c=b("./Collection");a.prototype=new c;a.prototype.get=function(a){};a.prototype.set=function(a,b){};a.prototype.isEmpty=function(){};d.exports=a},"Map.js":function(c,d,b){function a(){}a.prototype.get=
+function(a){};a.prototype.put=function(a,b){};a.prototype.size=function(){};a.prototype.values=function(){};d.exports=a},"NoSuchElementException.js":function(c,d,b){function a(a){this.message=a||""}a.prototype=Error();a.prototype.name="NoSuchElementException";d.exports=a},"OperationNotSupported.js":function(c,d,b){function a(a){this.message=a||""}a.prototype=Error();a.prototype.name="OperationNotSupported";d.exports=a},"Set.js":function(c,d,b){function a(){}c=b("./Collection");a.prototype=new c;a.prototype.contains=
+function(a){};d.exports=a},"SortedMap.js":function(c,d,b){function a(){}c=b("./Map");a.prototype=new c;d.exports=a},"SortedSet.js":function(c,d,b){function a(){}c=b("./Set");a.prototype=new c;d.exports=a},"Stack.js":function(c,d,b){function a(){this.array=[]}c=b("./List");var h=b("./EmptyStackException");a.prototype=new c;a.prototype.array=null;a.prototype.push=function(a){this.array.push(a);return a};a.prototype.pop=function(a){if(0===this.array.length)throw new h;return this.array.pop()};a.prototype.peek=
+function(){if(0===this.array.length)throw new h;return this.array[this.array.length-1]};a.prototype.empty=function(a){return 0===this.array.length?!0:!1};a.prototype.isEmpty=function(){return this.empty()};a.prototype.search=function(a){return this.array.indexOf(a)};a.prototype.size=function(){return this.array.length};a.prototype.toArray=function(){for(var a=[],b=0,c=this.array.length;b<c;b++)a.push(this.array[b]);return a};d.exports=a},"TreeMap.js":function(c,d,b){function a(){this.array=[]}c=b("./Map");
+b("./SortedMap");var h=b("./ArrayList");a.prototype=new c;a.prototype.array=null;a.prototype.get=function(a){for(var b=0,c=this.array.length;b<c;b++){var d=this.array[b];if(0===d.key.compareTo(a))return d.value}return null};a.prototype.put=function(a,b){var c=this.get(a);if(c){var d=c.value;c.value=b;return d}for(var d={key:a,value:b},k=0,h=this.array.length;k<h;k++)if(c=this.array[k],1===c.key.compareTo(a))return this.array.splice(k,0,d),null;this.array.push({key:a,value:b});return null};a.prototype.values=
+function(){for(var a=new h,b=0,c=this.array.length;b<c;b++)a.add(this.array[b].value);return a};a.prototype.size=function(){return this.values().size()};d.exports=a},"TreeSet.js":function(c,d,b){function a(a){this.array=[];a instanceof h&&this.addAll(a)}var h=b("./Collection");c=b("./SortedSet");var e=b("./OperationNotSupported"),f=b("./NoSuchElementException");a.prototype=new c;a.prototype.array=null;a.prototype.contains=function(a){for(var b=0,c=this.array.length;b<c;b++)if(0===this.array[b].compareTo(a))return!0;
+return!1};a.prototype.add=function(a){if(this.contains(a))return!1;for(var b=0,c=this.array.length;b<c;b++)if(1===this.array[b].compareTo(a))return this.array.splice(b,0,a),!0;this.array.push(a);return!0};a.prototype.addAll=function(a){for(a=a.iterator();a.hasNext();)this.add(a.next());return!0};a.prototype.remove=function(a){throw new e;};a.prototype.size=function(){return this.array.length};a.prototype.isEmpty=function(){return 0===this.array.length};a.prototype.toArray=function(){for(var a=[],
+b=0,c=this.array.length;b<c;b++)a.push(this.array[b]);return a};a.prototype.iterator=function(){return new a.Iterator(this)};a.Iterator=function(a){this.treeSet=a};a.Iterator.prototype.treeSet=null;a.Iterator.prototype.position=0;a.Iterator.prototype.next=function(){if(this.position===this.treeSet.size())throw new f;return this.treeSet.array[this.position++]};a.Iterator.prototype.hasNext=function(){return this.position<this.treeSet.size()?!0:!1};a.Iterator.prototype.remove=function(){throw new e;
+};d.exports=a},"browser.js":function(c,d,b){javascript={util:b("./")}},"index.js":function(c,d,b){d.exports={ArrayList:b("./ArrayList"),Arrays:b("./Arrays"),Collection:b("./Collection"),HashMap:b("./HashMap"),HashSet:b("./HashSet"),Iterator:b("./Iterator"),List:b("./List"),Map:b("./Map"),Set:b("./Set"),SortedMap:b("./SortedMap"),SortedSet:b("./SortedSet"),Stack:b("./Stack"),TreeMap:b("./TreeMap"),TreeSet:b("./TreeSet")}}}}})("javascript.util/lib/browser");
