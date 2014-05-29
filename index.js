@@ -544,7 +544,7 @@ javascript.util = {}
 
 
 
-//   JSTS GeoJSONReader
+//    JSTS GeoJSONReader
 
 jsts.io.GeoJSONReader = function(geometryFactory) {
       this.geometryFactory = geometryFactory || new jsts.geom.GeometryFactory();
@@ -986,7 +986,7 @@ jsts.geom.PrecisionModel.prototype.compareTo = function(o) {
 
 
 
-//   JSTS GEOMETRY
+//    JSTS GEOMETRY
 
 jsts.geom.Geometry = function(factory) {
   this.factory = factory;
@@ -2572,7 +2572,7 @@ jsts.geom.Coordinate = function(x, y) {
   };
 
 
-  //   JSTS Point
+  //    JSTS Point
 
   jsts.geom.Point = function(coordinate, factory) {
   this.factory = factory;
@@ -2757,7 +2757,7 @@ jsts.geom.Point.prototype.CLASS_NAME = 'jsts.geom.Point';
 
 
 
-// JSTS Polygon
+//    JSTS Polygon
 
 /**
    * Represents a linear polygon, which may include holes. The shell and holes
@@ -3030,6 +3030,310 @@ jsts.geom.Point.prototype.CLASS_NAME = 'jsts.geom.Point';
   };
   
   jsts.geom.Polygon.prototype.CLASS_NAME = 'jsts.geom.Polygon';
+
+
+
+
+
+//    JSTS LineString
+
+
+  /**
+   * @requires jsts/geom/Geometry.js
+   * @requires jsts/geom/Dimension.js
+   */
+
+  var Dimension = jsts.geom.Dimension;
+
+  /**
+   * @extends jsts.geom.Geometry
+   * @constructor
+   */
+  jsts.geom.LineString = function(points, factory) {
+    this.factory = factory;
+    this.points = points || [];
+  };
+
+  jsts.geom.LineString.prototype = new jsts.geom.Geometry();
+  jsts.geom.LineString.constructor = jsts.geom.LineString;
+
+  /**
+   * @type {jsts.geom.Coordinate[]}
+   * @private
+   */
+  jsts.geom.LineString.prototype.points = null;
+
+  /**
+   * @return {jsts.geom.Coordinate[]} this LineString's internal coordinate
+   *         array.
+   */
+  jsts.geom.LineString.prototype.getCoordinates = function() {
+    return this.points;
+  };
+
+  jsts.geom.LineString.prototype.getCoordinateSequence = function() {
+    return this.points;
+  };
+
+
+  /**
+   * @return {jsts.geom.Coordinate} The n'th coordinate of this
+   *         jsts.geom.LineString.
+   * @param {int}
+   *          n index.
+   */
+  jsts.geom.LineString.prototype.getCoordinateN = function(n) {
+    return this.points[n];
+  };
+
+
+  /**
+   * @return {jsts.geom.Coordinate} The first coordinate of this LineString or
+   *         null if empty.
+   */
+  jsts.geom.LineString.prototype.getCoordinate = function() {
+    if (this.isEmpty()) {
+      return null;
+    }
+    return this.getCoordinateN(0);
+  };
+
+
+  /**
+   * @return {number} LineStrings are always 1-dimensional.
+   */
+  jsts.geom.LineString.prototype.getDimension = function() {
+    return 1;
+  };
+
+
+  /**
+   * @return {number} dimension of the boundary of this jsts.geom.LineString.
+   */
+  jsts.geom.LineString.prototype.getBoundaryDimension = function() {
+    if (this.isClosed()) {
+      return Dimension.FALSE;
+    }
+    return 0;
+  };
+
+
+  /**
+   * @return {Boolean} true if empty.
+   */
+  jsts.geom.LineString.prototype.isEmpty = function() {
+    return this.points.length === 0;
+  };
+
+  jsts.geom.LineString.prototype.getNumPoints = function() {
+    return this.points.length;
+  };
+
+  jsts.geom.LineString.prototype.getPointN = function(n) {
+    return this.getFactory().createPoint(this.points[n]);
+  };
+
+
+  jsts.geom.LineString.prototype.getStartPoint = function() {
+    if (this.isEmpty()) {
+      return null;
+    }
+    return this.getPointN(0);
+  };
+
+  jsts.geom.LineString.prototype.getEndPoint = function() {
+    if (this.isEmpty()) {
+      return null;
+    }
+    return this.getPointN(this.getNumPoints() - 1);
+  };
+
+
+  /**
+   * @return {Boolean} true if LineString is Closed.
+   */
+  jsts.geom.LineString.prototype.isClosed = function() {
+    if (this.isEmpty()) {
+      return false;
+    }
+    return this.getCoordinateN(0).equals2D(
+        this.getCoordinateN(this.points.length - 1));
+  };
+
+
+  /**
+   * @return {Boolean} true if LineString is a Ring.
+   */
+  jsts.geom.LineString.prototype.isRing = function() {
+    return this.isClosed() && this.isSimple();
+  };
+
+
+  /**
+   * @return {String} String representation of LineString type.
+   */
+  jsts.geom.LineString.prototype.getGeometryType = function() {
+    return 'LineString';
+  };
+
+
+  /**
+   * Returns the length of this <code>LineString</code>
+   *
+   * @return the length of the linestring.
+   */
+  jsts.geom.LineString.prototype.getLength = function() {
+    return jsts.algorithm.CGAlgorithms.computeLength(this.points);
+  };
+
+  /**
+   * Gets the boundary of this geometry. The boundary of a lineal geometry is
+   * always a zero-dimensional geometry (which may be empty).
+   *
+   * @return {Geometry} the boundary geometry.
+   * @see Geometry#getBoundary
+   */
+  jsts.geom.LineString.prototype.getBoundary = function() {
+    return (new jsts.operation.BoundaryOp(this)).getBoundary();
+  };
+
+
+  jsts.geom.LineString.prototype.computeEnvelopeInternal = function() {
+    if (this.isEmpty()) {
+      return new jsts.geom.Envelope();
+    }
+
+    var env = new jsts.geom.Envelope();
+    this.points.forEach(function(component) {
+      env.expandToInclude(component);
+    });
+
+    return env;
+  };
+
+
+  /**
+   * @param {Geometry}
+   *          other Geometry to compare this LineString to.
+   * @param {double}
+   *          tolerance Tolerance.
+   * @return {Boolean} true if equal.
+   */
+  jsts.geom.LineString.prototype.equalsExact = function(other, tolerance) {
+    if (!this.isEquivalentClass(other)) {
+      return false;
+    }
+
+    if (this.points.length !== other.points.length) {
+      return false;
+    }
+
+    if (this.isEmpty() && other.isEmpty()) {
+      return true;
+    }
+
+    return this.points
+        .reduce(function(equal, point, i) {
+          return equal &&
+              jsts.geom.Geometry.prototype.equal(point, other.points[i],
+                  tolerance);
+        });
+  };
+
+  jsts.geom.LineString.prototype.isEquivalentClass = function(other) {
+    return other instanceof jsts.geom.LineString;
+  };
+
+  jsts.geom.LineString.prototype.compareToSameClass = function(o) {
+    var line = o;
+    // MD - optimized implementation
+    var i = 0, il = this.points.length;
+    var j = 0, jl = line.points.length;
+    while (i < il && j < jl) {
+      var comparison = this.points[i].compareTo(line.points[j]);
+      if (comparison !== 0) {
+        return comparison;
+      }
+      i++;
+      j++;
+    }
+    if (i < il) {
+      return 1;
+    }
+    if (j < jl) {
+      return -1;
+    }
+    return 0;
+  };
+
+  jsts.geom.LineString.prototype.apply = function(filter) {
+    if (filter instanceof jsts.geom.GeometryFilter ||
+        filter instanceof jsts.geom.GeometryComponentFilter) {
+      filter.filter(this);
+    } else if (filter instanceof jsts.geom.CoordinateFilter) {
+      for (var i = 0, len = this.points.length; i < len; i++) {
+        filter.filter(this.points[i]);
+      }
+    } else if (filter instanceof jsts.geom.CoordinateSequenceFilter) {
+      this.apply2.apply(this, arguments);
+    }
+  };
+
+  jsts.geom.LineString.prototype.apply2 = function(filter) {
+    if (this.points.length === 0)
+      return;
+    for (var i = 0; i < this.points.length; i++) {
+      filter.filter(this.points, i);
+      if (filter.isDone())
+        break;
+    }
+    if (filter.isGeometryChanged()) {
+      // TODO: call geometryChanged(); when ported
+    }
+  };
+
+  jsts.geom.LineString.prototype.clone = function() {
+    var points = [];
+
+    for (var i = 0, len = this.points.length; i < len; i++) {
+      points.push(this.points[i].clone());
+    }
+
+    return this.factory.createLineString(points);
+  };
+
+  /**
+   * Normalizes a LineString. A normalized linestring has the first point which
+   * is not equal to it's reflected point less than the reflected point.
+   */
+  jsts.geom.LineString.prototype.normalize = function() {
+    var i, il, j, ci, cj, len;
+
+    len = this.points.length;
+    il = parseInt(len / 2);
+
+    for (i = 0; i < il; i++) {
+      j = len - 1 - i;
+      // skip equal points on both ends
+      ci = this.points[i];
+      cj = this.points[j];
+      if (!ci.equals(cj)) {
+        if (ci.compareTo(cj) > 0) {
+          this.points.reverse();
+        }
+        return;
+      }
+    }
+  };
+
+  jsts.geom.LineString.prototype.CLASS_NAME = 'jsts.geom.LineString';
+
+
+
+
+//    JSTS
+
+
 
 
 
@@ -3366,7 +3670,7 @@ jsts.operation.buffer.BufferParameters.prototype.isSingleSided = function() {
 
 
 
-//   JSTS BufferOp
+//    JSTS BufferOp
 
 /* Copyright (c) 2011 by The Authors.
  * Published under the LGPL 2.1 license.
@@ -6779,8 +7083,7 @@ jsts.operation.buffer.OffsetCurveSetBuilder.prototype.addPoint = function(p) {
     return;
   var coord = p.getCoordinates();
   var curve = this.curveBuilder.getLineCurve(coord, this.distance);
-  this
-      .addCurve(curve, jsts.geom.Location.EXTERIOR, jsts.geom.Location.INTERIOR);
+  this.addCurve(curve, jsts.geom.Location.EXTERIOR, jsts.geom.Location.INTERIOR);
 };
 
 
@@ -6948,6 +7251,2225 @@ jsts.operation.buffer.OffsetCurveSetBuilder.prototype.isTriangleErodedCompletely
       tri.p0, tri.p1);
   return distToCentre < Math.abs(bufferDistance);
 };
+
+
+
+
+//    OffsetSegmentGenerator
+
+/* Copyright (c) 2011 by The Authors.
+ * Published under the LGPL 2.1 license.
+ * See /license-notice.txt for the full text of the license notice.
+ * See /license.txt for the full text of the license.
+ */
+
+
+/**
+ * Generates segments which form an offset curve. Supports all end cap and join
+ * options provided for buffering. Implements various heuristics to produce
+ * smoother, simpler curves which are still within a reasonable tolerance of the
+ * true curve.
+ * @constructor
+ */
+jsts.operation.buffer.OffsetSegmentGenerator = function(precisionModel,
+    bufParams, distance) {
+  this.seg0 = new jsts.geom.LineSegment();
+  this.seg1 = new jsts.geom.LineSegment();
+  this.offset0 = new jsts.geom.LineSegment();
+  this.offset1 = new jsts.geom.LineSegment();
+
+  this.precisionModel = precisionModel;
+  this.bufParams = bufParams;
+
+  // compute intersections in full precision, to provide accuracy
+  // the points are rounded as they are inserted into the curve line
+  this.li = new jsts.algorithm.RobustLineIntersector();
+  this.filletAngleQuantum = Math.PI / 2.0 / bufParams.getQuadrantSegments();
+
+  /**
+   * Non-round joins cause issues with short closing segments, so don't use
+   * them. In any case, non-round joins only really make sense for relatively
+   * small buffer distances.
+   */
+  if (this.bufParams.getQuadrantSegments() >= 8 &&
+      this.bufParams.getJoinStyle() === jsts.operation.buffer.BufferParameters.JOIN_ROUND) {
+    this.closingSegLengthFactor = jsts.operation.buffer.OffsetSegmentGenerator.MAX_CLOSING_SEG_LEN_FACTOR;
+  }
+  this.init(distance);
+};
+
+
+/**
+ * Factor which controls how close offset segments can be to skip adding a
+ * filler or mitre.
+ *
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.OFFSET_SEGMENT_SEPARATION_FACTOR = 1.0E-3;
+
+
+/**
+ * Factor which controls how close curve vertices on inside turns can be to be
+ * snapped
+ *
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.INSIDE_TURN_VERTEX_SNAP_DISTANCE_FACTOR = 1.0E-3;
+
+
+/**
+ * Factor which controls how close curve vertices can be to be snapped
+ *
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.CURVE_VERTEX_SNAP_DISTANCE_FACTOR = 1.0E-6;
+
+
+/**
+ * Factor which determines how short closing segs can be for round buffers *
+ *
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.MAX_CLOSING_SEG_LEN_FACTOR = 80;
+
+
+/**
+ * the max error of approximation (distance) between a quad segment and the true
+ * fillet curve
+ *
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.maxCurveSegmentError = 0.0;
+
+
+/**
+ * The angle quantum with which to approximate a fillet curve (based on the
+ * input # of quadrant segments)
+ *
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.filletAngleQuantum = null;
+
+
+/**
+ * The Closing Segment Length Factor controls how long "closing segments" are.
+ * Closing segments are added at the middle of inside corners to ensure a
+ * smoother boundary for the buffer offset curve. In some cases (particularly
+ * for round joins with default-or-better quantization) the closing segments can
+ * be made quite short. This substantially improves performance (due to fewer
+ * intersections being created).
+ *
+ * A closingSegFactor of 0 results in lines to the corner vertex A
+ * closingSegFactor of 1 results in lines halfway to the corner vertex A
+ * closingSegFactor of 80 results in lines 1/81 of the way to the corner vertex
+ * (this option is reasonable for the very common default situation of round
+ * joins and quadrantSegs >= 8)
+ *
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.closingSegLengthFactor = 1;
+
+
+/**
+ * @type {OffsetSegmentString}
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.segList = null;
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.distance = 0.0;
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.precisionModel = null;
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.bufParams = null;
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.li = null;
+
+
+/**
+ * @type {Coordinate}
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.s0 = null;
+
+
+/**
+ * @type {Coordinate}
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.s1 = null;
+
+
+/**
+ * @type {Coordinate}
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.s2 = null;
+
+
+/**
+ * @type {LineSegment}
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.seg0 = null;
+
+
+/**
+ * @type {LineSegment}
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.seg1 = null;
+
+
+/**
+ * @type {LineSegment}
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.offset0 = null;
+
+
+/**
+ * @type {LineSegment}
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.offset1 = null;
+
+
+/**
+ * @type {number}
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.side = 0;
+
+
+/**
+ * @type {boolean}
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.hasNarrowConcaveAngle = false;
+
+
+/**
+ * Tests whether the input has a narrow concave angle (relative to the offset
+ * distance). In this case the generated offset curve will contain
+ * self-intersections and heuristic closing segments. This is expected behaviour
+ * in the case of buffer curves. For pure offset curves, the output needs to be
+ * further treated before it can be used.
+ *
+ * @return true if the input has a narrow concave angle.
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.hasNarrowConcaveAngle = function() {
+  return this.hasNarrowConcaveAngle;
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.init = function(distance) {
+  this.distance = distance;
+  this.maxCurveSegmentError = this.distance *
+      (1 - Math.cos(this.filletAngleQuantum / 2.0));
+  this.segList = new jsts.operation.buffer.OffsetSegmentString();
+  this.segList.setPrecisionModel(this.precisionModel);
+  /**
+   * Choose the min vertex separation as a small fraction of the offset
+   * distance.
+   */
+  this.segList
+      .setMinimumVertexDistance(this.distance *
+          jsts.operation.buffer.OffsetSegmentGenerator.CURVE_VERTEX_SNAP_DISTANCE_FACTOR);
+};
+
+
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.initSideSegments = function(
+    s1, s2, side) {
+  this.s1 = s1;
+  this.s2 = s2;
+  this.side = side;
+  this.seg1.setCoordinates(this.s1, this.s2);
+  this.computeOffsetSegment(this.seg1, this.side, this.distance, this.offset1);
+};
+
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.getCoordinates = function() {
+  return this.segList.getCoordinates();
+};
+
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.closeRing = function() {
+  this.segList.closeRing();
+};
+
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.addSegments = function(
+    pt, isForward) {
+  this.segList.addPts(pt, isForward);
+};
+
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.addFirstSegment = function() {
+  this.segList.addPt(this.offset1.p0);
+};
+
+
+/**
+ * Add last offset point
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.addLastSegment = function() {
+  this.segList.addPt(this.offset1.p1);
+};
+
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.addNextSegment = function(
+    p, addStartPoint) {
+  // s0-s1-s2 are the coordinates of the previous segment and the current one
+  this.s0 = this.s1;
+  this.s1 = this.s2;
+  this.s2 = p;
+  this.seg0.setCoordinates(this.s0, this.s1);
+  this.computeOffsetSegment(this.seg0, this.side, this.distance, this.offset0);
+  this.seg1.setCoordinates(this.s1, this.s2);
+  this.computeOffsetSegment(this.seg1, this.side, this.distance, this.offset1);
+
+  // do nothing if points are equal
+  if (this.s1.equals(this.s2))
+    return;
+
+  var orientation = jsts.algorithm.CGAlgorithms.computeOrientation(this.s0,
+      this.s1, this.s2);
+  var outsideTurn = (orientation === jsts.algorithm.CGAlgorithms.CLOCKWISE && this.side === jsts.geomgraph.Position.LEFT) ||
+      (orientation === jsts.algorithm.CGAlgorithms.COUNTERCLOCKWISE && this.side === jsts.geomgraph.Position.RIGHT);
+
+  if (orientation == 0) { // lines are collinear
+    this.addCollinear(addStartPoint);
+  } else if (outsideTurn) {
+    this.addOutsideTurn(orientation, addStartPoint);
+  } else { // inside turn
+    this.addInsideTurn(orientation, addStartPoint);
+  }
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.addCollinear = function(
+    addStartPoint) {
+  /**
+   * This test could probably be done more efficiently, but the situation of
+   * exact collinearity should be fairly rare.
+   */
+  this.li.computeIntersection(this.s0, this.s1, this.s1, this.s2);
+  var numInt = this.li.getIntersectionNum();
+  /**
+   * if numInt is < 2, the lines are parallel and in the same direction. In this
+   * case the point can be ignored, since the offset lines will also be
+   * parallel.
+   */
+  if (numInt >= 2) {
+    /**
+     * segments are collinear but reversing. Add an "end-cap" fillet all the way
+     * around to other direction This case should ONLY happen for LineStrings,
+     * so the orientation is always CW. (Polygons can never have two consecutive
+     * segments which are parallel but reversed, because that would be a self
+     * intersection.
+     *
+     */
+    if (this.bufParams.getJoinStyle() === jsts.operation.buffer.BufferParameters.JOIN_BEVEL ||
+        this.bufParams.getJoinStyle() === jsts.operation.buffer.BufferParameters.JOIN_MITRE) {
+      if (addStartPoint)
+        this.segList.addPt(this.offset0.p1);
+      this.segList.addPt(this.offset1.p0);
+    } else {
+      this.addFillet(this.s1, this.offset0.p1, this.offset1.p0,
+          jsts.algorithm.CGAlgorithms.CLOCKWISE, this.distance);
+    }
+  }
+};
+
+
+/**
+ * Adds the offset points for an outside (convex) turn
+ *
+ * @param orientation
+ * @param addStartPoint
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.addOutsideTurn = function(
+    orientation, addStartPoint) {
+  /**
+   * Heuristic: If offset endpoints are very close together, just use one of
+   * them as the corner vertex. This avoids problems with computing mitre
+   * corners in the case where the two segments are almost parallel (which is
+   * hard to compute a robust intersection for).
+   */
+  if (this.offset0.p1.distance(this.offset1.p0) < this.distance *
+      jsts.operation.buffer.OffsetSegmentGenerator.OFFSET_SEGMENT_SEPARATION_FACTOR) {
+    this.segList.addPt(this.offset0.p1);
+    return;
+  }
+
+  if (this.bufParams.getJoinStyle() === jsts.operation.buffer.BufferParameters.JOIN_MITRE) {
+    this.addMitreJoin(this.s1, this.offset0, this.offset1, this.distance);
+  } else if (this.bufParams.getJoinStyle() === jsts.operation.buffer.BufferParameters.JOIN_BEVEL) {
+    this.addBevelJoin(this.offset0, this.offset1);
+  } else {
+    // add a circular fillet connecting the endpoints of the offset segments
+    if (addStartPoint)
+      this.segList.addPt(this.offset0.p1);
+    // TESTING - comment out to produce beveled joins
+    this.addFillet(this.s1, this.offset0.p1, this.offset1.p0, orientation,
+        this.distance);
+    this.segList.addPt(this.offset1.p0);
+  }
+};
+
+
+/**
+ * Adds the offset points for an inside (concave) turn.
+ *
+ * @param orientation
+ * @param addStartPoint
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.addInsideTurn = function(
+    orientation, addStartPoint) {
+  /**
+   * add intersection point of offset segments (if any)
+   */
+  this.li.computeIntersection(this.offset0.p0, this.offset0.p1, this.offset1.p0, this.offset1.p1);
+  if (this.li.hasIntersection()) {
+    this.segList.addPt(this.li.getIntersection(0));
+  } else {
+    /**
+     * If no intersection is detected, it means the angle is so small and/or the
+     * offset so large that the offsets segments don't intersect. In this case
+     * we must add a "closing segment" to make sure the buffer curve is
+     * continuous, fairly smooth (e.g. no sharp reversals in direction) and
+     * tracks the buffer correctly around the corner. The curve connects the
+     * endpoints of the segment offsets to points which lie toward the centre
+     * point of the corner. The joining curve will not appear in the final
+     * buffer outline, since it is completely internal to the buffer polygon.
+     *
+     * In complex buffer cases the closing segment may cut across many other
+     * segments in the generated offset curve. In order to improve the
+     * performance of the noding, the closing segment should be kept as short as
+     * possible. (But not too short, since that would defeat its purpose). This
+     * is the purpose of the closingSegFactor heuristic value.
+     */
+
+    /**
+     * The intersection test above is vulnerable to robustness errors; i.e. it
+     * may be that the offsets should intersect very close to their endpoints,
+     * but aren't reported as such due to rounding. To handle this situation
+     * appropriately, we use the following test: If the offset points are very
+     * close, don't add closing segments but simply use one of the offset points
+     */
+    this.hasNarrowConcaveAngle = true;
+    // System.out.println("NARROW ANGLE - distance = " + distance);
+    if (this.offset0.p1.distance(this.offset1.p0) < this.distance *
+        jsts.operation.buffer.OffsetSegmentGenerator.INSIDE_TURN_VERTEX_SNAP_DISTANCE_FACTOR) {
+      this.segList.addPt(this.offset0.p1);
+    } else {
+      // add endpoint of this segment offset
+      this.segList.addPt(this.offset0.p1);
+
+      /**
+       * Add "closing segment" of required length.
+       */
+      if (this.closingSegLengthFactor > 0) {
+        var mid0 = new jsts.geom.Coordinate((this.closingSegLengthFactor *
+            this.offset0.p1.x + this.s1.x) /
+            (this.closingSegLengthFactor + 1), (this.closingSegLengthFactor *
+            this.offset0.p1.y + this.s1.y) /
+            (this.closingSegLengthFactor + 1));
+        this.segList.addPt(mid0);
+        var mid1 = new jsts.geom.Coordinate((this.closingSegLengthFactor *
+            this.offset1.p0.x + this.s1.x) /
+            (this.closingSegLengthFactor + 1), (this.closingSegLengthFactor *
+            this.offset1.p0.y + this.s1.y) /
+            (this.closingSegLengthFactor + 1));
+        this.segList.addPt(mid1);
+      } else {
+        /**
+         * This branch is not expected to be used except for testing purposes.
+         * It is equivalent to the JTS 1.9 logic for closing segments (which
+         * results in very poor performance for large buffer distances)
+         */
+        this.segList.addPt(this.s1);
+      }
+
+      // */
+      // add start point of next segment offset
+      this.segList.addPt(this.offset1.p0);
+    }
+  }
+};
+
+
+/**
+ * Compute an offset segment for an input segment on a given side and at a given
+ * distance. The offset points are computed in full double precision, for
+ * accuracy.
+ *
+ * @param seg
+ *          the segment to offset.
+ * @param side
+ *          the side of the segment ( {@link Position} ) the offset lies on.
+ * @param distance
+ *          the offset distance.
+ * @param offset
+ *          the points computed for the offset segment.
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.computeOffsetSegment = function(
+    seg, side, distance, offset) {
+  var sideSign = side === jsts.geomgraph.Position.LEFT ? 1 : -1;
+  var dx = seg.p1.x - seg.p0.x;
+  var dy = seg.p1.y - seg.p0.y;
+  var len = Math.sqrt(dx * dx + dy * dy);
+  // u is the vector that is the length of the offset, in the direction of the
+  // segment
+  var ux = sideSign * distance * dx / len;
+  var uy = sideSign * distance * dy / len;
+  offset.p0.x = seg.p0.x - uy;
+  offset.p0.y = seg.p0.y + ux;
+  offset.p1.x = seg.p1.x - uy;
+  offset.p1.y = seg.p1.y + ux;
+};
+
+
+/**
+ * Add an end cap around point p1, terminating a line segment coming from p0
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.addLineEndCap = function(
+    p0, p1) {
+  var seg = new jsts.geom.LineSegment(p0, p1);
+
+  var offsetL = new jsts.geom.LineSegment();
+  this.computeOffsetSegment(seg, jsts.geomgraph.Position.LEFT, this.distance,
+      offsetL);
+  var offsetR = new jsts.geom.LineSegment();
+  this.computeOffsetSegment(seg, jsts.geomgraph.Position.RIGHT, this.distance,
+      offsetR);
+
+  var dx = p1.x - p0.x;
+  var dy = p1.y - p0.y;
+  var angle = Math.atan2(dy, dx);
+
+  switch (this.bufParams.getEndCapStyle()) {
+    case jsts.operation.buffer.BufferParameters.CAP_ROUND:
+      // add offset seg points with a fillet between them
+      this.segList.addPt(offsetL.p1);
+      this.addFillet(p1, angle + Math.PI / 2, angle - Math.PI / 2,
+          jsts.algorithm.CGAlgorithms.CLOCKWISE, this.distance);
+      this.segList.addPt(offsetR.p1);
+      break;
+    case jsts.operation.buffer.BufferParameters.CAP_FLAT:
+      // only offset segment points are added
+      this.segList.addPt(offsetL.p1);
+      this.segList.addPt(offsetR.p1);
+      break;
+    case jsts.operation.buffer.BufferParameters.CAP_SQUARE:
+      // add a square defined by extensions of the offset segment endpoints
+      var squareCapSideOffset = new jsts.geom.Coordinate();
+      squareCapSideOffset.x = Math.abs(this.distance) * Math.cos(angle);
+      squareCapSideOffset.y = Math.abs(this.distance) * Math.sin(angle);
+
+      var squareCapLOffset = new jsts.geom.Coordinate(offsetL.p1.x +
+          squareCapSideOffset.x, offsetL.p1.y + squareCapSideOffset.y);
+      var squareCapROffset = new jsts.geom.Coordinate(offsetR.p1.x +
+          squareCapSideOffset.x, offsetR.p1.y + squareCapSideOffset.y);
+      this.segList.addPt(squareCapLOffset);
+      this.segList.addPt(squareCapROffset);
+      break;
+
+  }
+};
+
+
+/**
+ * Adds a mitre join connecting the two reflex offset segments. The mitre will
+ * be beveled if it exceeds the mitre ratio limit.
+ *
+ * @param offset0
+ *          the first offset segment.
+ * @param offset1
+ *          the second offset segment.
+ * @param distance
+ *          the offset distance.
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.addMitreJoin = function(
+    p, offset0, offset1, distance) {
+  var isMitreWithinLimit = true;
+  var intPt = null;
+
+  /**
+   * This computation is unstable if the offset segments are nearly collinear.
+   * Howver, this situation should have been eliminated earlier by the check for
+   * whether the offset segment endpoints are almost coincident
+   */
+  try {
+    intPt = jsts.algorithm.HCoordinate.intersection(offset0.p0, offset0.p1,
+        offset1.p0, offset1.p1);
+
+    var mitreRatio = distance <= 0.0 ? 1.0 : intPt.distance(p) /
+        Math.abs(distance);
+
+    if (mitreRatio > this.bufParams.getMitreLimit())
+      this.isMitreWithinLimit = false;
+  } catch (e) {
+    if (e instanceof jsts.error.NotRepresentableError) {
+      intPt = new jsts.geom.Coordinate(0, 0);
+      this.isMitreWithinLimit = false;
+    }
+  }
+
+  if (isMitreWithinLimit) {
+    this.segList.addPt(intPt);
+  } else {
+    this.addLimitedMitreJoin(offset0, offset1, distance, bufParams
+        .getMitreLimit());
+    // addBevelJoin(offset0, offset1);
+  }
+};
+
+
+/**
+ * Adds a limited mitre join connecting the two reflex offset segments. A
+ * limited mitre is a mitre which is beveled at the distance determined by the
+ * mitre ratio limit.
+ *
+ * @param offset0
+ *          the first offset segment.
+ * @param offset1
+ *          the second offset segment.
+ * @param distance
+ *          the offset distance.
+ * @param mitreLimit
+ *          the mitre limit ratio.
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.addLimitedMitreJoin = function(
+    offset0, offset1, distance, mitreLimit) {
+  var basePt = this.seg0.p1;
+
+  var ang0 = jsts.algorithm.Angle.angle(basePt, this.seg0.p0);
+  var ang1 = jsts.algorithm.Angle.angle(basePt, this.seg1.p1);
+
+  // oriented angle between segments
+  var angDiff = jsts.algorithm.Angle.angleBetweenOriented(this.seg0.p0, basePt,
+      this.seg1.p1);
+  // half of the interior angle
+  var angDiffHalf = angDiff / 2;
+
+  // angle for bisector of the interior angle between the segments
+  var midAng = jsts.algorithm.Angle.normalize(ang0 + angDiffHalf);
+  // rotating this by PI gives the bisector of the reflex angle
+  var mitreMidAng = jsts.algorithm.Angle.normalize(midAng + Math.PI);
+
+  // the miterLimit determines the distance to the mitre bevel
+  var mitreDist = mitreLimit * distance;
+  // the bevel delta is the difference between the buffer distance
+  // and half of the length of the bevel segment
+  var bevelDelta = mitreDist * Math.abs(Math.sin(angDiffHalf));
+  var bevelHalfLen = distance - bevelDelta;
+
+  // compute the midpoint of the bevel segment
+  var bevelMidX = basePt.x + mitreDist * Math.cos(mitreMidAng);
+  var bevelMidY = basePt.y + mitreDist * Math.sin(mitreMidAng);
+  var bevelMidPt = new jsts.geom.Coordinate(bevelMidX, bevelMidY);
+
+  // compute the mitre midline segment from the corner point to the bevel
+  // segment midpoint
+  var mitreMidLine = new jsts.geom.LineSegment(basePt, bevelMidPt);
+
+  // finally the bevel segment endpoints are computed as offsets from
+  // the mitre midline
+  var bevelEndLeft = mitreMidLine.pointAlongOffset(1.0, bevelHalfLen);
+  var bevelEndRight = mitreMidLine.pointAlongOffset(1.0, -bevelHalfLen);
+
+  if (this.side == jsts.geomgraph.Position.LEFT) {
+    this.segList.addPt(bevelEndLeft);
+    this.segList.addPt(bevelEndRight);
+  } else {
+    this.segList.addPt(bevelEndRight);
+    this.segList.addPt(bevelEndLeft);
+  }
+};
+
+
+/**
+ * Adds a bevel join connecting the two offset segments around a reflex corner.
+ *
+ * @param {LineSegment}
+ *          offset0 the first offset segment.
+ * @param {LineSegment}
+ *          offset1 the second offset segment.
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.addBevelJoin = function(
+    offset0, offset1) {
+  this.segList.addPt(offset0.p1);
+  this.segList.addPt(offset1.p0);
+};
+
+
+/**
+ * Add points for a circular fillet around a reflex corner. Adds the start and
+ * end points
+ *
+ * @param p
+ *          base point of curve.
+ * @param p0
+ *          start point of fillet curve.
+ * @param p1
+ *          endpoint of fillet curve.
+ * @param direction
+ *          the orientation of the fillet.
+ * @param radius
+ *          the radius of the fillet.
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.addFillet = function(p,
+    p0, p1, direction, radius) {
+  if (!(p1 instanceof jsts.geom.Coordinate)) {
+    this.addFillet2.apply(this, arguments);
+    return;
+  }
+
+  var dx0 = p0.x - p.x;
+  var dy0 = p0.y - p.y;
+  var startAngle = Math.atan2(dy0, dx0);
+  var dx1 = p1.x - p.x;
+  var dy1 = p1.y - p.y;
+  var endAngle = Math.atan2(dy1, dx1);
+
+  if (direction === jsts.algorithm.CGAlgorithms.CLOCKWISE) {
+    if (startAngle <= endAngle)
+      startAngle += 2.0 * Math.PI;
+  } else { // direction == COUNTERCLOCKWISE
+    if (startAngle >= endAngle)
+      startAngle -= 2.0 * Math.PI;
+  }
+  this.segList.addPt(p0);
+  this.addFillet(p, startAngle, endAngle, direction, radius);
+  this.segList.addPt(p1);
+};
+
+
+/**
+ * Adds points for a circular fillet arc between two specified angles. The start
+ * and end point for the fillet are not added - the caller must add them if
+ * required.
+ *
+ * @param direction
+ *          is -1 for a CW angle, 1 for a CCW angle.
+ * @param radius
+ *          the radius of the fillet.
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.addFillet2 = function(p,
+    startAngle, endAngle, direction, radius) {
+  var directionFactor = direction === jsts.algorithm.CGAlgorithms.CLOCKWISE ? -1
+      : 1;
+
+  var totalAngle = Math.abs(startAngle - endAngle);
+  var nSegs = parseInt((totalAngle / this.filletAngleQuantum + 0.5));
+
+  if (nSegs < 1)
+    return; // no segments because angle is less than increment - nothing to do!
+
+  var initAngle, currAngleInc;
+
+  // choose angle increment so that each segment has equal length
+  initAngle = 0.0;
+  currAngleInc = totalAngle / nSegs;
+
+  var currAngle = initAngle;
+  var pt = new jsts.geom.Coordinate();
+  while (currAngle < totalAngle) {
+    var angle = startAngle + directionFactor * currAngle;
+    pt.x = p.x + radius * Math.cos(angle);
+    pt.y = p.y + radius * Math.sin(angle);
+    this.segList.addPt(pt);
+    currAngle += currAngleInc;
+  }
+};
+
+
+/**
+ * Creates a CW circle around a point
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.createCircle = function(
+    p) {
+  // add start point
+  var pt = new jsts.geom.Coordinate(p.x + this.distance, p.y);
+  this.segList.addPt(pt);
+  this.addFillet(p, 0.0, 2.0 * Math.PI, -1, this.distance);
+  this.segList.closeRing();
+};
+
+
+/**
+ * Creates a CW square around a point
+ */
+jsts.operation.buffer.OffsetSegmentGenerator.prototype.createSquare = function(
+    p) {
+  this.segList.addPt(new jsts.geom.Coordinate(p.x + distance, p.y + distance));
+  this.segList.addPt(new jsts.geom.Coordinate(p.x + distance, p.y - distance));
+  this.segList.addPt(new jsts.geom.Coordinate(p.x - distance, p.y - distance));
+  this.segList.addPt(new jsts.geom.Coordinate(p.x - distance, p.y + distance));
+  this.segList.closeRing();
+};
+
+
+
+//    JSTS LineSegment
+
+/* Copyright (c) 2011 by The Authors.
+ * Published under the LGPL 2.1 license.
+ * See /license-notice.txt for the full text of the license notice.
+ * See /license.txt for the full text of the license.
+ */
+
+/**
+ * @requires jsts/geom/Coordinate.js
+ * @requires jsts/algorithm/CGAlgorithms.js
+ * @requires jsts/algorithm/RobustLineIntersector.js
+ * @requires jsts/algorithm/HCoordinate.js
+ */
+
+/**
+ * Represents a line segment defined by two {@link Coordinate}s. Provides
+ * methods to compute various geometric properties and relationships of line
+ * segments.
+ * <p>
+ * This class is designed to be easily mutable (to the extent of having its
+ * contained points public). This supports a common pattern of reusing a single
+ * LineSegment object as a way of computing segment properties on the segments
+ * defined by arrays or lists of {@link Coordinate}s.
+ *
+ * @param {Coordinate}
+ *          p0
+ * @param {Coordinate}
+ *          p1
+ * @constructor
+ */
+jsts.geom.LineSegment = function () {
+    if (arguments.length === 0) {
+        this.p0 = new jsts.geom.Coordinate();
+        this.p1 = new jsts.geom.Coordinate();
+    } else if (arguments.length === 1) {
+        this.p0 = arguments[0].p0;
+        this.p1 = arguments[0].p1;
+    } else if (arguments.length === 2) {
+        this.p0 = arguments[0];
+        this.p1 = arguments[1];
+    } else if (arguments.length === 4) {
+        this.p0 = new jsts.geom.Coordinate(arguments[0], arguments[1]);
+        this.p1 = new jsts.geom.Coordinate(arguments[2], arguments[3]);
+    }
+};
+
+/**
+ * @type {Coordinate}
+ */
+jsts.geom.LineSegment.prototype.p0 = null;
+
+
+/**
+ * @type {Coordinate}
+ */
+jsts.geom.LineSegment.prototype.p1 = null;
+
+/**
+ * Computes the midpoint of a segment
+ *
+ * @param {jsts.geom.Coordinate} p0
+ * @param {jsts.geom.Coordinate} p1
+ * @return {jsts.geom.Coordinate} the midpoint of the segment
+ */
+jsts.geom.LineSegment.midPoint = function (p0, p1) {
+    return new jsts.geom.Coordinate((p0.x + p1.x) / 2, (p0.y + p1.y) / 2);
+};
+
+/**
+ * @param {number} i
+ * @return {jsts.geom.Coordinate}
+ */
+jsts.geom.LineSegment.prototype.getCoordinate = function (i) {
+    if (i === 0) return this.p0;
+    return this.p1;
+};
+
+/**
+ * Computes the length of the line segment.
+ *
+ * @return {number} the length of the line segment.
+ */
+jsts.geom.LineSegment.prototype.getLength = function () {
+    return this.p0.distance(this.p1);
+};
+
+/**
+ * Tests whether the segment is horizontal.
+ *
+ * @return {boolean} <code>true</code> if the segment is horizontal.
+ */
+jsts.geom.LineSegment.prototype.isHorizontal = function () {
+    return this.p0.y === this.p1.y;
+};
+/**
+ * Tests whether the segment is vertical.
+ *
+ * @return {boolean} <code>true</code> if the segment is vertical.
+ */
+jsts.geom.LineSegment.prototype.isVertical = function () {
+    return this.p0.x === this.p1.x;
+};
+
+jsts.geom.LineSegment.prototype.orientationIndex = function (arg) {
+    if (arg instanceof jsts.geom.LineSegment) {
+        return this.orientationIndex1(arg);
+    } else if (arg instanceof jsts.geom.Coordinate) {
+        return this.orientationIndex2(arg);
+    }
+};
+
+/**
+  * Determines the orientation of a LineSegment relative to this segment.
+  * The concept of orientation is specified as follows:
+  * Given two line segments A and L,
+  * <ul>
+  * <li>A is to the left of a segment L if A lies wholly in the
+  * closed half-plane lying to the left of L
+  * <li>A is to the right of a segment L if A lies wholly in the
+  * closed half-plane lying to the right of L
+  * <li>otherwise, A has indeterminate orientation relative to L. This
+  * happens if A is collinear with L or if A crosses the line determined by L.
+  * </ul>
+  *
+  * @param {jsts.geom.LineSegment} seg the LineSegment to compare
+  *
+  * @return 1 if <code>seg</code> is to the left of this segment<br />
+  * -1 if <code>seg</code> is to the right of this segment<br />
+  * 0 if <code>seg</code> has indeterminate orientation relative to this segment
+  */
+jsts.geom.LineSegment.prototype.orientationIndex1 = function (seg) {
+    var orient0 = jsts.algorithm.CGAlgorithms.orientationIndex(this.p0, this.p1, seg.p0);
+    var orient1 = jsts.algorithm.CGAlgorithms.orientationIndex(this.p0, this.p1, seg.p1);
+    // this handles the case where the points are L or collinear
+    if (orient0 >= 0 && orient1 >= 0) {
+        return Math.max(orient0, orient1);
+    }
+    // this handles the case where the points are R or collinear
+    if (orient0 <= 0 && orient1 <= 0) {
+        return Math.max(orient0, orient1);
+    }
+    // points lie on opposite sides ==> indeterminate orientation
+    return 0;
+};
+
+/**
+ * Determines the orientation index of a {@link Coordinate} relative to this segment.
+ * The orientation index is as defined in {@link CGAlgorithms#computeOrientation}.
+ *
+ * @param {jsts.geom.Coordinate} p the coordinate to compare
+ *
+ * @return 1 (LEFT) if <code>p</code> is to the left of this segment
+ * @return -1 (RIGHT) if <code>p</code> is to the right of this segment
+ * @return 0 (COLLINEAR) if <code>p</code> is collinear with this segment
+ * 
+ * @see CGAlgorithms#computeOrientation(Coordinate, Coordinate, Coordinate)
+ */
+jsts.geom.LineSegment.prototype.orientationIndex2 = function (p) {
+    return jsts.algorithm.CGAlgorithms.orientationIndex(this.p0, this.p1, p);
+};
+
+/**
+ * Reverses the direction of the line segment.
+ */
+jsts.geom.LineSegment.prototype.reverse = function () {
+    var temp = this.p0;
+    this.p0 = this.p1;
+    this.p1 = temp;
+};
+
+/**
+ * Puts the line segment into a normalized form.
+ * This is useful for using line segments in maps and indexes when
+ * topological equality rather than exact equality is desired.
+ * A segment in normalized form has the first point smaller
+ * than the second (according to the standard ordering on {@link Coordinate}).
+ */
+jsts.geom.LineSegment.prototype.normalize = function () {
+    if (this.p1.compareTo(this.p0) < 0) this.reverse();
+};
+
+/**
+ * Computes the angle that the vector defined by this segment
+ * makes with the X-axis.
+ * The angle will be in the range [ -PI, PI ] radians.
+ *
+ * @return {number} the angle this segment makes with the X-axis (in radians)
+ */
+jsts.geom.LineSegment.prototype.angle = function () {
+    return Math.atan2(this.p1.y - this.p0.y, this.p1.x - this.p0.x);
+};
+
+/**
+ * Computes the midpoint of the segment
+ *
+ * @return {jsts.geom.Coordinate} the midpoint of the segment
+ */
+jsts.geom.LineSegment.prototype.midPoint = function () {
+    return jsts.geom.LineSegment.midPoint(this.p0, this.p1);
+};
+
+jsts.geom.LineSegment.prototype.distance = function (arg) {
+    if (arg instanceof jsts.geom.LineSegment) {
+        return this.distance1(arg);
+    } else if (arg instanceof jsts.geom.Coordinate) {
+        return this.distance2(arg);
+    }
+};
+
+/**
+ * Computes the distance between this line segment and another segment.
+ *
+ * @param {jsts.geom.LineSegment} ls
+ * @return {number} the distance to the other segment
+ */
+jsts.geom.LineSegment.prototype.distance1 = function (ls) {
+    return jsts.algorithm.CGAlgorithms.distanceLineLine(this.p0, this.p1, ls.p0, ls.p1);
+};
+
+/**
+ * Computes the distance between this line segment and a given point.
+ *
+ * @param {jsts.geom.Coordinate}
+ *          p the coordinate.
+ * @return {number}
+ *          the distance from this segment to the given point.
+ */
+jsts.geom.LineSegment.prototype.distance2 = function (p) {
+    return jsts.algorithm.CGAlgorithms.distancePointLine(p, this.p0, this.p1);
+};
+
+/**
+ * Computes the {@link Coordinate} that lies a given
+ * fraction along the line defined by this segment.
+ * A fraction of <code>0.0</code> returns the start point of the segment;
+ * a fraction of <code>1.0</code> returns the end point of the segment.
+ * If the fraction is < 0.0 or > 1.0 the point returned 
+ * will lie before the start or beyond the end of the segment. 
+ *
+ * @param {number} segmentLengthFraction the fraction of the segment length along the line
+ * @return {jsts.geom.Coordinate} the point at that distance
+ */
+jsts.geom.LineSegment.prototype.pointAlong = function (segmentLengthFraction) {
+    var coord = new jsts.geom.Coordinate();
+    coord.x = this.p0.x + segmentLengthFraction * (this.p1.x - this.p0.x);
+    coord.y = this.p0.y + segmentLengthFraction * (this.p1.y - this.p0.y);
+    return coord;
+};
+
+/**
+ * Computes the {@link Coordinate} that lies a given
+ * fraction along the line defined by this segment and offset from 
+ * the segment by a given distance.
+ * A fraction of <code>0.0</code> offsets from the start point of the segment;
+ * a fraction of <code>1.0</code> offsets from the end point of the segment.
+ * The computed point is offset to the left of the line if the offset distance is
+ * positive, to the right if negative.
+ *
+ * @param {number} segmentLengthFraction the fraction of the segment length along the line
+ * @param {number} offsetDistance the distance the point is offset from the segment
+ *    (positive is to the left, negative is to the right)
+ * @return {jsts.geom.Coordinate} the point at that distance and offset
+ */
+jsts.geom.LineSegment.prototype.pointAlongOffset = function (segmentLengthFraction, offsetDistance) {
+    // the point on the segment line
+    var segx = this.p0.x + segmentLengthFraction * (this.p1.x - this.p0.x);
+    var segy = this.p0.y + segmentLengthFraction * (this.p1.y - this.p0.y);
+
+    var dx = this.p1.x - this.p0.x;
+    var dy = this.p1.y - this.p0.y;
+    var len = Math.sqrt(dx * dx + dy * dy);
+    var ux = 0;
+    var uy = 0;
+    if (offsetDistance !== 0) {
+        if (len <= 0) {
+            throw "Cannot compute offset from zero-length line segment";
+        }
+
+        // u is the vector that is the length of the offset, in the direction of the segment
+        ux = offsetDistance * dx / len;
+        uy = offsetDistance * dy / len;
+    }
+
+    // the offset point is the seg point plus the offset vector rotated 90 degrees CCW
+    var offsetx = segx - uy;
+    var offsety = segy + ux;
+
+    var coord = new jsts.geom.Coordinate(offsetx, offsety);
+    return coord;
+};
+
+/**
+ * Computes the Projection Factor for the projection of the point p onto this
+ * LineSegment. The Projection Factor is the constant r by which the vector for
+ * this segment must be multiplied to equal the vector for the projection of
+ * <tt>p<//t> on the line
+ * defined by this segment.
+ * <p>
+ * The projection factor returned will be in the range <tt>(-inf, +inf)</tt>.
+ *
+ * @param {Coordinate} p the point to compute the factor for.
+ * @return {double} the projection factor for the point.
+ */
+jsts.geom.LineSegment.prototype.projectionFactor = function (p) {
+    if (p.equals(this.p0))
+        return 0.0;
+    if (p.equals(this.p1))
+        return 1.0;
+    // Otherwise, use comp.graphics.algorithms Frequently Asked Questions method
+    /*            AC dot AB
+                   r = ---------
+                         ||AB||^2
+                r has the following meaning:
+                r=0 P = A
+                r=1 P = B
+                r<0 P is on the backward extension of AB
+                r>1 P is on the forward extension of AB
+                0<r<1 P is interior to AB
+        */
+    var dx = this.p1.x - this.p0.x;
+    var dy = this.p1.y - this.p0.y;
+    var len2 = dx * dx + dy * dy;
+    var r = ((p.x - this.p0.x) * dx + (p.y - this.p0.y) * dy) / len2;
+    return r;
+};
+
+/**
+ * Computes the fraction of distance (in <tt>[0.0, 1.0]</tt>) 
+ * that the projection of a point occurs along this line segment.
+ * If the point is beyond either ends of the line segment,
+ * the closest fractional value (<tt>0.0</tt> or <tt>1.0</tt>) is returned.
+ * <p>
+ * Essentially, this is the {@link #projectionFactor} clamped to 
+ * the range <tt>[0.0, 1.0]</tt>.
+ * If the segment has zero length, 1.0 is returned.
+ *  
+ * @param {jsts.geom.Coordinate} inputPt the point
+ * @return {number} the fraction along the line segment the projection of the point occurs
+ */
+jsts.geom.LineSegment.prototype.segmentFraction = function (inputPt) {
+    var segFrac = this.projectionFactor(inputPt);
+    if (segFrac < 0) {
+        segFrac = 0;
+    } else if (segFrac > 1 || isNaN(segFrac)) {
+        segFrac = 1;
+    }
+    return segFrac;
+};
+
+jsts.geom.LineSegment.prototype.project = function (arg) {
+    if (arg instanceof jsts.geom.Coordinate) {
+        return this.project1(arg);
+    } else if (arg instanceof jsts.geom.LineSegment) {
+        return this.project2(arg);
+    }
+};
+
+/**
+ * Compute the projection of a point onto the line determined
+ * by this line segment.
+ * <p>
+ * Note that the projected point
+ * may lie outside the line segment.  If this is the case,
+ * the projection factor will lie outside the range [0.0, 1.0].
+ * @param {jsts.geom.Coordinate} p
+ * @return {jsts.geom.Coordinate}
+ */
+jsts.geom.LineSegment.prototype.project1 = function (p) {
+    if (p.equals(this.p0) || p.equals(this.p1)) {
+        return new jsts.geom.Coordinate(p);
+    }
+
+    var r = this.projectionFactor(p);
+    var coord = new jsts.geom.Coordinate();
+    coord.x = this.p0.x + r * (this.p1.x - this.p0.x);
+    coord.y = this.p0.y + r * (this.p1.y - this.p0.y);
+    return coord;
+};
+
+/**
+ * Project a line segment onto this line segment and return the resulting
+ * line segment.  The returned line segment will be a subset of
+ * the target line line segment.  This subset may be null, if
+ * the segments are oriented in such a way that there is no projection.
+ * <p>
+ * Note that the returned line may have zero length (i.e. the same endpoints).
+ * This can happen for instance if the lines are perpendicular to one another.
+ *
+ * @param {jsts.geom.LineSegment} seg the line segment to project
+ * @return {jsts.geom.LineSegment} the projected line segment, or <code>null</code> if there is no overlap
+ */
+jsts.geom.LineSegment.prototype.project2 = function (seg) {
+    var pf0 = this.projectionFactor(seg.p0);
+    var pf1 = this.projectionFactor(seg.p1);
+    // check if segment projects at all
+    if (pf0 >= 1 && pf1 >= 1) return null;
+    if (pf0 <= 0 && pf1 <= 0) return null;
+
+    var newp0 = this.project(seg.p0);
+    if (pf0 < 0) newp0 = p0;
+    if (pf0 > 1) newp0 = p1;
+
+    var newp1 = this.project(seg.p1);
+    if (pf1 < 0.0) newp1 = p0;
+    if (pf1 > 1.0) newp1 = p1;
+
+    return new jsts.geom.LineSegment(newp0, newp1);
+};
+
+/**
+ * Computes the closest point on this line segment to another point.
+ *
+ * @param {Coordinate}
+ *          p the point to find the closest point to.
+ * @return {Coordinate} a Coordinate which is the closest point on the line
+ *         segment to the point p.
+ */
+jsts.geom.LineSegment.prototype.closestPoint = function (p) {
+    var factor = this.projectionFactor(p);
+    if (factor > 0 && factor < 1) {
+        return this.project(p);
+    }
+    var dist0 = this.p0.distance(p);
+    var dist1 = this.p1.distance(p);
+    if (dist0 < dist1)
+        return this.p0;
+    return this.p1;
+};
+
+
+/**
+ * Computes the closest points on two line segments.
+ *
+ * @param {LineSegment}
+ *          line the segment to find the closest point to.
+ * @return {[]} a pair of Coordinates which are the closest points on the line
+ *         segments.
+ */
+jsts.geom.LineSegment.prototype.closestPoints = function (line) {
+    // test for intersection
+    var intPt = this.intersection(line);
+    if (intPt !== null) {
+        return [intPt, intPt];
+    }
+
+    /**
+     * if no intersection closest pair contains at least one endpoint. Test each
+     * endpoint in turn.
+     */
+    var closestPt = [];
+    var minDistance = Number.MAX_VALUE;
+    var dist;
+
+    var close00 = this.closestPoint(line.p0);
+    minDistance = close00.distance(line.p0);
+    closestPt[0] = close00;
+    closestPt[1] = line.p0;
+
+    var close01 = this.closestPoint(line.p1);
+    dist = close01.distance(line.p1);
+    if (dist < minDistance) {
+        minDistance = dist;
+        closestPt[0] = close01;
+        closestPt[1] = line.p1;
+    }
+
+    var close10 = line.closestPoint(this.p0);
+    dist = close10.distance(this.p0);
+    if (dist < minDistance) {
+        minDistance = dist;
+        closestPt[0] = this.p0;
+        closestPt[1] = close10;
+    }
+
+    var close11 = line.closestPoint(this.p1);
+    dist = close11.distance(this.p1);
+    if (dist < minDistance) {
+        minDistance = dist;
+        closestPt[0] = this.p1;
+        closestPt[1] = close11;
+    }
+
+    return closestPt;
+};
+
+
+/**
+ * Computes an intersection point between two line segments, if there is one.
+ * There may be 0, 1 or many intersection points between two segments. If there
+ * are 0, null is returned. If there is 1 or more, exactly one of them is
+ * returned (chosen at the discretion of the algorithm). If more information is
+ * required about the details of the intersection, the
+ * {@link RobustLineIntersector} class should be used.
+ *
+ * @param {LineSegment}
+ *          line a line segment.
+ * @return {Coordinate} an intersection point, or <code>null</code> if there
+ *         is none.
+ *
+ * @see RobustLineIntersector
+ */
+jsts.geom.LineSegment.prototype.intersection = function (line) {
+    var li = new jsts.algorithm.RobustLineIntersector();
+    li.computeIntersection(this.p0, this.p1, line.p0, line.p1);
+    if (li.hasIntersection())
+        return li.getIntersection(0);
+    return null;
+};
+
+jsts.geom.LineSegment.prototype.setCoordinates = function (ls) {
+    if (ls instanceof jsts.geom.Coordinate) {
+        this.setCoordinates2.apply(this, arguments);
+        return;
+    }
+
+    this.setCoordinates2(ls.p0, ls.p1);
+};
+
+jsts.geom.LineSegment.prototype.setCoordinates2 = function (p0, p1) {
+    this.p0.x = p0.x;
+    this.p0.y = p0.y;
+    this.p1.x = p1.x;
+    this.p1.y = p1.y;
+};
+
+/**
+ * Computes the perpendicular distance between the (infinite) line defined
+ * by this line segment and a point.
+ *
+ * @param {jsts.geom.Coordinate} p the coordinate
+ * @return {number} the perpendicular distance between the defined line and the given point
+ */
+jsts.geom.LineSegment.prototype.distancePerpendicular = function (p) {
+    return jsts.algorithm.CGAlgorithms.distancePointLinePerpendicular(p, this.p0, this.p1);
+};
+
+/**
+ * Computes the intersection point of the lines of infinite extent defined
+ * by two line segments (if there is one).
+ * There may be 0, 1 or an infinite number of intersection points 
+ * between two lines.
+ * If there is a unique intersection point, it is returned. 
+ * Otherwise, <tt>null</tt> is returned.
+ * If more information is required about the details of the intersection,
+ * the {@link RobustLineIntersector} class should be used.
+ *
+ * @param {jsts.geom.LineSegment} line a line segment defining an straight line with infinite extent
+ * @return {jsts.geom.Coordinate} an intersection point, 
+ * or <code>null</code> if there is no point of intersection
+ * or an infinite number of intersection points
+ * 
+ * @see RobustLineIntersector
+ */
+jsts.geom.LineSegment.prototype.lineIntersection = function (line) {
+    try {
+        var intPt = jsts.algorithm.HCoordinate.intersection(this.p0, this.p1, line.p0, line.p1);
+        return intPt;
+    } catch (ex) {
+        // eat this exception, and return null;
+    }
+    return null;
+};
+
+/**
+ * Creates a LineString with the same coordinates as this segment
+ * 
+ * @param {jsts.geom.GeometryFactory} geomFactory the geometery factory to use
+ * @return {jsts.geom.LineString} a LineString with the same geometry as this segment
+ */
+jsts.geom.LineSegment.prototype.toGeometry = function (geomFactory) {
+    return geomFactory.createLineString([this.p0, this.p1]);
+};
+
+/**
+ *  Returns <code>true</code> if <code>other</code> has the same values for
+ *  its points.
+ *
+ * @param {Object} o a <code>LineSegment</code> with which to do the comparison.
+ * @return {boolean} <code>true</code> if <code>other</code> is a <code>LineSegment</code>
+ *      with the same values for the x and y ordinates.
+ */
+jsts.geom.LineSegment.prototype.equals = function (o) {
+    if (!(o instanceof jsts.geom.LineSegment)) {
+        return false;
+    }
+    return this.p0.equals(o.p0) && this.p1.equals(o.p1);
+};
+
+/**
+ *  Compares this object with the specified object for order.
+ *  Uses the standard lexicographic ordering for the points in the LineSegment.
+ *
+ *@param {Object} o  the <code>LineSegment</code> with which this <code>LineSegment</code>
+ *      is being compared
+ *@return {number} a negative integer, zero, or a positive integer as this <code>LineSegment</code>
+ *      is less than, equal to, or greater than the specified <code>LineSegment</code>
+ */
+jsts.geom.LineSegment.prototype.compareTo = function (o) {
+    var comp0 = this.p0.compareTo(o.p0);
+    if (comp0 !== 0) return comp0;
+    return this.p1.compareTo(o.p1);
+};
+
+/**
+ *  Returns <code>true</code> if <code>other</code> is
+ *  topologically equal to this LineSegment (e.g. irrespective
+ *  of orientation).
+ *
+ * @param {jsts.geom.LineSegment} other  a <code>LineSegment</code> with which to do the comparison.
+ * @return {boolean} <code>true</code> if <code>other</code> is a <code>LineSegment</code>
+ *      with the same values for the x and y ordinates.
+ */
+jsts.geom.LineSegment.prototype.equalsTopo = function (other) {
+    return this.p0.equals(other.p0) && this.p1.equals(other.p1)
+        || this.p0.equals(other.p1) && this.p1.equals(other.p0);
+};
+
+jsts.geom.LineSegment.prototype.toString = function () {
+    return "LINESTRING(" +
+        this.p0.x + " " + this.p0.y
+        + ", " +
+        this.p1.x + " " + this.p1.y + ")";
+};
+
+
+
+
+
+//    JSTS OffsetSegementString
+
+/* Copyright (c) 2011 by The Authors.
+ * Published under the LGPL 2.1 license.
+ * See /license-notice.txt for the full text of the license notice.
+ * See /license.txt for the full text of the license.
+ */
+
+
+/**
+ * A dynamic list of the vertices in a constructed offset curve. Automatically
+ * removes adjacent vertices which are closer than a given tolerance.
+ * @constructor
+ */
+jsts.operation.buffer.OffsetSegmentString = function() {
+  this.ptList = [];
+};
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentString.prototype.ptList = null;
+
+
+/**
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentString.prototype.precisionModel = null;
+
+
+/**
+ * The distance below which two adjacent points on the curve are considered to
+ * be coincident. This is chosen to be a small fraction of the offset distance.
+ *
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentString.prototype.minimimVertexDistance = 0.0;
+
+
+jsts.operation.buffer.OffsetSegmentString.prototype.setPrecisionModel = function(
+    precisionModel) {
+  this.precisionModel = precisionModel;
+};
+
+jsts.operation.buffer.OffsetSegmentString.prototype.setMinimumVertexDistance = function(
+    minimimVertexDistance) {
+  this.minimimVertexDistance = minimimVertexDistance;
+};
+
+jsts.operation.buffer.OffsetSegmentString.prototype.addPt = function(pt) {
+  var bufPt = new jsts.geom.Coordinate(pt);
+  this.precisionModel.makePrecise(bufPt);
+  // don't add duplicate (or near-duplicate) points
+  if (this.isRedundant(bufPt))
+    return;
+  this.ptList.push(bufPt);
+};
+
+jsts.operation.buffer.OffsetSegmentString.prototype.addPts = function(pt,
+    isForward) {
+  if (isForward) {
+    for (var i = 0; i < pt.length; i++) {
+      this.addPt(pt[i]);
+    }
+  } else {
+    for (var i = pt.length - 1; i >= 0; i--) {
+      this.addPt(pt[i]);
+    }
+  }
+};
+
+
+/**
+ * Tests whether the given point is redundant relative to the previous point in
+ * the list (up to tolerance).
+ *
+ * @param pt
+ * @return true if the point is redundant.
+ * @private
+ */
+jsts.operation.buffer.OffsetSegmentString.prototype.isRedundant = function(pt) {
+  if (this.ptList.length < 1)
+    return false;
+  var lastPt = this.ptList[this.ptList.length - 1];
+  var ptDist = pt.distance(lastPt);
+  if (ptDist < this.minimimVertexDistance)
+    return true;
+  return false;
+};
+
+jsts.operation.buffer.OffsetSegmentString.prototype.closeRing = function() {
+  if (this.ptList.length < 1)
+    return;
+  var startPt = new jsts.geom.Coordinate(this.ptList[0]);
+  var lastPt = this.ptList[this.ptList.length - 1];
+  var last2Pt = null;
+  if (this.ptList.length >= 2)
+    last2Pt = this.ptList[this.ptList.length - 2];
+  if (startPt.equals(lastPt))
+    return;
+  this.ptList.push(startPt);
+};
+
+jsts.operation.buffer.OffsetSegmentString.prototype.reverse = function() {
+
+};
+
+jsts.operation.buffer.OffsetSegmentString.prototype.getCoordinates = function() {
+  return this.ptList;
+};
+
+
+
+
+//    JSTS CGAlgorithms
+
+/* Copyright (c) 2011 by The Authors.
+ * Published under the LGPL 2.1 license.
+ * See /license-notice.txt for the full text of the license notice.
+ * See /license.txt for the full text of the license.
+ */
+
+
+
+/**
+ * Specifies and implements various fundamental Computational Geometric
+ * algorithms. The algorithms supplied in this class are robust for
+ * double-precision floating point.
+ *
+ * @constructor
+ */
+jsts.algorithm.CGAlgorithms = function() {
+
+};
+
+
+/**
+ * A value that indicates an orientation of clockwise, or a right turn.
+ */
+jsts.algorithm.CGAlgorithms.CLOCKWISE = -1;
+
+
+/**
+ * A value that indicates an orientation of clockwise, or a right turn.
+ */
+jsts.algorithm.CGAlgorithms.RIGHT = jsts.algorithm.CGAlgorithms.CLOCKWISE;
+
+
+/**
+ * A value that indicates an orientation of counterclockwise, or a left turn.
+ */
+jsts.algorithm.CGAlgorithms.COUNTERCLOCKWISE = 1;
+
+
+/**
+ * A value that indicates an orientation of counterclockwise, or a left turn.
+ */
+jsts.algorithm.CGAlgorithms.LEFT = jsts.algorithm.CGAlgorithms.COUNTERCLOCKWISE;
+
+
+/**
+ * A value that indicates an orientation of collinear, or no turn (straight).
+ */
+jsts.algorithm.CGAlgorithms.COLLINEAR = 0;
+
+
+/**
+ * A value that indicates an orientation of collinear, or no turn (straight).
+ */
+jsts.algorithm.CGAlgorithms.STRAIGHT = jsts.algorithm.CGAlgorithms.COLLINEAR;
+
+
+/**
+ * Returns the index of the direction of the point <code>q</code> relative to
+ * a vector specified by <code>p1-p2</code>.
+ *
+ * @param {jsts.geom.Coordinate}
+ *          p1 the origin point of the vector.
+ * @param {jsts.geom.Coordinate}
+ *          p2 the final point of the vector.
+ * @param {jsts.geom.Coordinate}
+ *          q the point to compute the direction to.
+ *
+ * @return {Number} 1 if q is counter-clockwise (left) from p1-p2.
+ * @return {Number} -1 if q is clockwise (right) from p1-p2.
+ * @return {Number} 0 if q is collinear with p1-p2.
+ */
+jsts.algorithm.CGAlgorithms.orientationIndex = function(p1, p2, q) {
+  /**
+   * MD - 9 Aug 2010 It seems that the basic algorithm is slightly orientation
+   * dependent, when computing the orientation of a point very close to a line.
+   * This is possibly due to the arithmetic in the translation to the origin.
+   *
+   * For instance, the following situation produces identical results in spite
+   * of the inverse orientation of the line segment:
+   *
+   * Coordinate p0 = new Coordinate(219.3649559090992, 140.84159161824724);
+   * Coordinate p1 = new Coordinate(168.9018919682399, -5.713787599646864);
+   *
+   * Coordinate p = new Coordinate(186.80814046338352, 46.28973405831556); int
+   * orient = orientationIndex(p0, p1, p); int orientInv = orientationIndex(p1,
+   * p0, p);
+   *
+   * A way to force consistent results is to normalize the orientation of the
+   * vector using the following code. However, this may make the results of
+   * orientationIndex inconsistent through the triangle of points, so it's not
+   * clear this is an appropriate patch.
+   *
+   */
+
+  var dx1, dy1, dx2, dy2;
+  dx1 = p2.x - p1.x;
+  dy1 = p2.y - p1.y;
+  dx2 = q.x - p2.x;
+  dy2 = q.y - p2.y;
+
+  return jsts.algorithm.RobustDeterminant.signOfDet2x2(dx1, dy1, dx2, dy2);
+};
+
+
+/**
+ * Tests whether a point lies inside or on a ring. The ring may be oriented in
+ * either direction. A point lying exactly on the ring boundary is considered to
+ * be inside the ring.
+ * <p>
+ * This method does <i>not</i> first check the point against the envelope of
+ * the ring.
+ *
+ * @param {jsts.geom.Coordinate}
+ *          p point to check for ring inclusion.
+ * @param {Array{jsts.geom.Coordinate}}
+ *          ring an array of coordinates representing the ring (which must have
+ *          first point identical to last point)
+ * @return {Boolean} true if p is inside ring.
+ *
+ * @see locatePointInRing
+ */
+jsts.algorithm.CGAlgorithms.isPointInRing = function(p, ring) {
+  return jsts.algorithm.CGAlgorithms.locatePointInRing(p, ring) !== jsts.geom.Location.EXTERIOR;
+};
+
+
+/**
+ * Determines whether a point lies in the interior, on the boundary, or in the
+ * exterior of a ring. The ring may be oriented in either direction.
+ * <p>
+ * This method does <i>not</i> first check the point against the envelope of
+ * the ring.
+ *
+ * @param {jsts.geom.Coordinate}
+ *          p point to check for ring inclusion.
+ * @param {Array{jsts.geom.Coordinate}}
+ *          ring an array of coordinates representing the ring (which must have
+ *          first point identical to last point)
+ * @return {jsts.geom.Location} the {@link Location} of p relative to the ring.
+ */
+jsts.algorithm.CGAlgorithms.locatePointInRing = function(p, ring) {
+  return jsts.algorithm.RayCrossingCounter.locatePointInRing(p, ring);
+};
+
+
+/**
+ * Tests whether a point lies on the line segments defined by a list of
+ * coordinates.
+ *
+ * @param {jsts.geom.Coordinate}
+ *          p the coordinate to test.
+ * @param {Array{jsts.geom.Coordinate}}
+ *          pt An array of coordinates defining line segments
+ * @return {Boolean} true if the point is a vertex of the line or lies in the
+ *         interior of a line segment in the linestring.
+ */
+jsts.algorithm.CGAlgorithms.isOnLine = function(p, pt) {
+  var lineIntersector, i, il, p0, p1;
+  lineIntersector = new jsts.algorithm.RobustLineIntersector();
+
+  for (i = 1, il = pt.length; i < il; i++) {
+    p0 = pt[i - 1];
+    p1 = pt[i];
+    lineIntersector.computeIntersection(p, p0, p1);
+
+    if (lineIntersector.hasIntersection()) {
+      return true;
+    }
+  }
+  return false;
+};
+
+
+/**
+ * Computes whether a ring defined by an array of {@link Coordinate}s is
+ * oriented counter-clockwise.
+ * <ul>
+ * <li>The list of points is assumed to have the first and last points equal.
+ * <li>This will handle coordinate lists which contain repeated points.
+ * </ul>
+ * This algorithm is <b>only</b> guaranteed to work with valid rings. If the
+ * ring is invalid (e.g. self-crosses or touches), the computed result may not
+ * be correct.
+ *
+ * @param {Array{jsts.geom.Coordinate}}
+ *          ring an array of Coordinates forming a ring
+ * @return {Boolean} true if the ring is oriented counter-clockwise.
+ * @throws IllegalArgumentException
+ *           if there are too few points to determine orientation (< 3)
+ */
+jsts.algorithm.CGAlgorithms.isCCW = function(ring) {
+  var nPts, hiPt, hiIndex, p, iPrev, iNext, prev, next, i, disc, isCCW;
+
+  // # of points without closing endpoint
+  nPts = ring.length - 1;
+
+  // sanity check
+  if (nPts < 3) {
+    throw new jsts.IllegalArgumentError(
+        'Ring has fewer than 3 points, so orientation cannot be determined');
+  }
+
+  // find highets point
+  hiPt = ring[0];
+  hiIndex = 0;
+
+  i = 1;
+  for (i; i <= nPts; i++) {
+    p = ring[i];
+    if (p.y > hiPt.y) {
+      hiPt = p;
+      hiIndex = i;
+    }
+  }
+
+  // find distinct point before highest point
+  iPrev = hiIndex;
+  do {
+    iPrev = iPrev - 1;
+    if (iPrev < 0) {
+      iPrev = nPts;
+    }
+  } while (ring[iPrev].equals2D(hiPt) && iPrev !== hiIndex);
+
+  // find distinct point after highest point
+  iNext = hiIndex;
+  do {
+    iNext = (iNext + 1) % nPts;
+  } while (ring[iNext].equals2D(hiPt) && iNext !== hiIndex);
+
+  prev = ring[iPrev];
+  next = ring[iNext];
+
+  /**
+   * This check catches cases where the ring contains an A-B-A configuration of
+   * points. This can happen if the ring does not contain 3 distinct points
+   * (including the case where the input array has fewer than 4 elements), or it
+   * contains coincident line segments.
+   */
+  if (prev.equals2D(hiPt) || next.equals2D(hiPt) || prev.equals2D(next)) {
+    return false;
+  }
+
+  disc = jsts.algorithm.CGAlgorithms.computeOrientation(prev, hiPt, next);
+
+  /**
+   * If disc is exactly 0, lines are collinear. There are two possible cases:
+   * (1) the lines lie along the x axis in opposite directions (2) the lines lie
+   * on top of one another
+   *
+   * (1) is handled by checking if next is left of prev ==> CCW (2) will never
+   * happen if the ring is valid, so don't check for it (Might want to assert
+   * this)
+   */
+  isCCW = false;
+  if (disc === 0) {
+    // poly is CCW if prev x is right of next x
+    isCCW = (prev.x > next.x);
+  } else {
+    // if area is positive, points are ordered CCW
+    isCCW = (disc > 0);
+  }
+
+  return isCCW;
+};
+
+
+/**
+ * Computes the orientation of a point q to the directed line segment p1-p2. The
+ * orientation of a point relative to a directed line segment indicates which
+ * way you turn to get to q after travelling from p1 to p2.
+ *
+ * @param {jsts.geom.Coordinate}
+ *          p1 First coordinate of the linesegment.
+ * @param {jsts.geom.Coordinate}
+ *          p2 Second coordinate of the linesegment.
+ * @param {jsts.geom.Coordinate}
+ *          q The point to calculate orientation of.
+ *
+ * @return {Number} 1 if q is counter-clockwise from p1-p2.
+ * @return {Number} -1 if q is clockwise from p1-p2.
+ * @return {Number} 0 if q is collinear with p1-p2.
+ */
+jsts.algorithm.CGAlgorithms.computeOrientation = function(p1, p2, q) {
+  return jsts.algorithm.CGAlgorithms.orientationIndex(p1, p2, q);
+};
+
+
+/**
+ * Computes the distance from a point p to a line segment AB
+ *
+ * Note: NON-ROBUST!
+ *
+ * @param {jsts.geom.Coordinate}
+ *          p the point to compute the distance for.
+ * @param {jsts.geom.Coordinate}
+ *          A one point of the line.
+ * @param {jsts.geom.Coordinate}
+ *          B another point of the line (must be different to A).
+ * @return {Number} the distance from p to line segment AB.
+ */
+jsts.algorithm.CGAlgorithms.distancePointLine = function(p, A, B) {
+  if (!(A instanceof jsts.geom.Coordinate)) {
+    jsts.algorithm.CGAlgorithms.distancePointLine2.apply(this, arguments);
+  }
+
+  // if start = end, then just compute distance to one of the endpoints
+  if (A.x === B.x && A.y === B.y) {
+    return p.distance(A);
+  }
+  // otherwise use comp.graphics.algorithms Frequently Asked Questions method
+  /*(1)             AC dot AB
+                   r = ---------
+                         ||AB||^2
+    r has the following meaning:
+    r=0 P = A
+    r=1 P = B
+    r<0 P is on the backward extension of AB
+    r>1 P is on the forward extension of AB
+    0<r<1 P is interior to AB
+  */
+  var r, s;
+  r = ((p.x - A.x) * (B.x - A.x) + (p.y - A.y) * (B.y - A.y)) /
+      ((B.x - A.x) * (B.x - A.x) + (B.y - A.y) * (B.y - A.y));
+
+  if (r <= 0.0) {
+    return p.distance(A);
+  }
+  if (r >= 1.0) {
+    return p.distance(B);
+  }
+
+  /*(2)
+    (Ay-Cy)(Bx-Ax)-(Ax-Cx)(By-Ay)
+  s = -----------------------------
+             L^2
+
+  Then the distance from C to P = |s|*L.
+  */
+
+  s = ((A.y - p.y) * (B.x - A.x) - (A.x - p.x) * (B.y - A.y)) /
+      ((B.x - A.x) * (B.x - A.x) + (B.y - A.y) * (B.y - A.y));
+
+  return Math.abs(s) *
+      Math.sqrt(((B.x - A.x) * (B.x - A.x) + (B.y - A.y) * (B.y - A.y)));
+};
+
+
+/**
+ * Computes the perpendicular distance from a point p to the (infinite) line
+ * containing the points AB
+ *
+ * @param {jsts.geom.Coordinate}
+ *          p the point to compute the distance for.
+ * @param {jsts.geom.Coordinate}
+ *          A one point of the line.
+ * @param {jsts.geom.Coordinate}
+ *          B another point of the line (must be different to A).
+ * @return {Number} the distance from p to line AB.
+ */
+jsts.algorithm.CGAlgorithms.distancePointLinePerpendicular = function(p, A, B) {
+  // use comp.graphics.algorithms Frequently Asked Questions method
+  /*(2)
+                   (Ay-Cy)(Bx-Ax)-(Ax-Cx)(By-Ay)
+              s = -----------------------------
+                                   L^2
+
+              Then the distance from C to P = |s|*L.
+  */
+  var s = ((A.y - p.y) * (B.x - A.x) - (A.x - p.x) * (B.y - A.y)) /
+      ((B.x - A.x) * (B.x - A.x) + (B.y - A.y) * (B.y - A.y));
+
+  return Math.abs(s) *
+      Math.sqrt(((B.x - A.x) * (B.x - A.x) + (B.y - A.y) * (B.y - A.y)));
+};
+
+
+/**
+ * Computes the distance from a point to a sequence of line segments.
+ *
+ * @param {jsts.geom.Coordinate}
+ *          p a point.
+ * @param {Array{jsts.geom.Coordinate}}
+ *          line a sequence of contiguous line segments defined by their
+ *          vertices
+ * @return {Number} the minimum distance between the point and the line
+ *         segments.
+ */
+jsts.algorithm.CGAlgorithms.distancePointLine2 = function(p, line) {
+  var minDistance, i, il, dist;
+  if (line.length === 0) {
+    throw new jsts.error.IllegalArgumentError(
+        'Line array must contain at least one vertex');
+  }
+  minDistance = p.distance(line[0]);
+  for (i = 0, il = line.length - 1; i < il; i++) {
+    dist = jsts.algorithm.CGAlgorithms.distancePointLine(p, line[i],
+        line[i + 1]);
+    if (dist < minDistance) {
+      minDistance = dist;
+    }
+  }
+  return minDistance;
+};
+
+/**
+ * Computes the distance from a line segment AB to a line segment CD
+ *
+ * Note: NON-ROBUST!
+ *
+ * @param {jsts.geom.Coordinate}
+ *          A a point of one line.
+ * @param {jsts.geom.Coordinate}
+ *          B the second point of (must be different to A).
+ * @param {jsts.geom.Coordinate}
+ *          C one point of the line.
+ * @param {jsts.geom.Coordinate}
+ *          D another point of the line (must be different to A).
+ * @return {Number} the distance.
+ */
+
+jsts.algorithm.CGAlgorithms.distanceLineLine = function(A, B, C, D) {
+  // check for zero-length segments
+  if (A.equals(B)) {
+    return jsts.algorithm.CGAlgorithms.distancePointLine(A, C, D);
+  }
+  if (C.equals(D)) {
+    return jsts.algorithm.CGAlgorithms.distancePointLine(D, A, B);
+  }
+
+  // AB and CD are line segments
+  /* from comp.graphics.algo
+
+  Solving the above for r and s yields
+        (Ay-Cy)(Dx-Cx)-(Ax-Cx)(Dy-Cy)
+             r = ----------------------------- (eqn 1)
+        (Bx-Ax)(Dy-Cy)-(By-Ay)(Dx-Cx)
+
+      (Ay-Cy)(Bx-Ax)-(Ax-Cx)(By-Ay)
+    s = ----------------------------- (eqn 2)
+      (Bx-Ax)(Dy-Cy)-(By-Ay)(Dx-Cx)
+  Let P be the position vector of the intersection point, then
+    P=A+r(B-A) or
+    Px=Ax+r(Bx-Ax)
+    Py=Ay+r(By-Ay)
+  By examining the values of r & s, you can also determine some other
+  limiting conditions:
+    If 0<=r<=1 & 0<=s<=1, intersection exists
+    r<0 or r>1 or s<0 or s>1 line segments do not intersect
+    If the denominator in eqn 1 is zero, AB & CD are parallel
+    If the numerator in eqn 1 is also zero, AB & CD are collinear.
+
+  */
+  var r_top, r_bot, s_top, s_bot, s, r;
+  r_top = (A.y - C.y) * (D.x - C.x) - (A.x - C.x) * (D.y - C.y);
+  r_bot = (B.x - A.x) * (D.y - C.y) - (B.y - A.y) * (D.x - C.x);
+
+  s_top = (A.y - C.y) * (B.x - A.x) - (A.x - C.x) * (B.y - A.y);
+  s_bot = (B.x - A.x) * (D.y - C.y) - (B.y - A.y) * (D.x - C.x);
+
+
+  if ((r_bot === 0) || (s_bot === 0)) {
+    return Math.min(jsts.algorithm.CGAlgorithms.distancePointLine(A, C, D),
+        Math.min(jsts.algorithm.CGAlgorithms.distancePointLine(B, C, D), Math
+            .min(jsts.algorithm.CGAlgorithms.distancePointLine(C, A, B),
+                jsts.algorithm.CGAlgorithms.distancePointLine(D, A, B))));
+  }
+
+  s = s_top / s_bot;
+  r = r_top / r_bot;
+  if ((r < 0) || (r > 1) || (s < 0) || (s > 1)) {
+    // no intersection
+    return Math.min(jsts.algorithm.CGAlgorithms.distancePointLine(A, C, D),
+        Math.min(jsts.algorithm.CGAlgorithms.distancePointLine(B, C, D), Math
+            .min(jsts.algorithm.CGAlgorithms.distancePointLine(C, A, B),
+                jsts.algorithm.CGAlgorithms.distancePointLine(D, A, B))));
+  }
+
+  return 0.0; // intersection exists
+};
+
+
+/**
+ * Computes the signed area for a ring. The signed area is positive if the ring
+ * is oriented CW, negative if the ring is oriented CCW, and zero if the ring is
+ * degenerate or flat.
+ *
+ * @param {Array{jsts.geom.Coordinate}}
+ *          ring the coordinates forming the ring
+ * @return {Number} the signed area of the ring.
+ */
+jsts.algorithm.CGAlgorithms.signedArea = function(ring) {
+  if (ring.length < 3) {
+    return 0.0;
+  }
+  var sum, i, il, bx, by, cx, cy;
+
+  sum = 0.0;
+
+  for (i = 0, il = ring.length - 1; i < il; i++) {
+    bx = ring[i].x;
+    by = ring[i].y;
+    cx = ring[i + 1].x;
+    cy = ring[i + 1].y;
+    sum += (bx + cx) * (cy - by);
+  }
+
+  return -sum / 2.0;
+};
+
+
+/**
+ * Computes the signed area for a ring. The signed area is:
+ * <ul>
+ * <li>positive if the ring is oriented CW
+ * <li>negative if the ring is oriented CCW
+ * <li>zero if the ring is degenerate or flat
+ * </ul>
+ *
+ * @param {Array{jsts.geom.Coordinate}}
+ *          ring the coordinates forming the ring
+ * @return {Number} the signed area of the ring.
+ */
+jsts.algorithm.CGAlgorithms.signedArea = function(ring) {
+  var n, sum, p, bx, by, i, cx, cy;
+
+  n = ring.length;
+  if (n < 3) {
+    return 0.0;
+  }
+
+  sum = 0.0;
+  p = ring[0];
+
+  bx = p.x;
+  by = p.y;
+
+  for (i = 1; i < n; i++) {
+    p = ring[i];
+    cx = p.x;
+    cy = p.y;
+    sum += (bx + cx) * (cy - by);
+    bx = cx;
+    by = cy;
+  }
+
+  return -sum / 2.0;
+};
+
+/**
+ * Computes the length of a linestring specified by a sequence of points.
+ *
+ * NOTE: This is renamed from length() to computeLength() because 'length' is a
+ * reserved keyword in javascript.
+ *
+ * @param {Array{jsts.geom.Coordinate}}
+ *          pts the points specifying the linestring
+ * @return {Number} the length of the linestring.
+ */
+jsts.algorithm.CGAlgorithms.computeLength = function(pts) {
+  // optimized for processing CoordinateSequences
+  var n = pts.length, len, x0, y0, x1, y1, dx, dy, p, i, il;
+  if (n <= 1) {
+    return 0.0;
+  }
+
+  len = 0.0;
+
+  p = pts[0];
+
+  x0 = p.x;
+  y0 = p.y;
+
+  i = 1, il = n;
+  for (i; i < n; i++) {
+    p = pts[i];
+
+    x1 = p.x;
+    y1 = p.y;
+    dx = x1 - x0;
+    dy = y1 - y0;
+
+    len += Math.sqrt(dx * dx + dy * dy);
+
+    x0 = x1;
+    y0 = y1;
+  }
+  return len;
+};
+
+/**
+ * @see {jsts.algorithm.CGAlgorithms.computeLength} Since 'length' is a reserved
+ *      keyword in javascript this function does not act as a function. Please
+ *      use 'computeLength' instead.
+ */
+jsts.algorithm.CGAlgorithms.length = function() {};
+
+
+
+
+
+//    JSTS Location
+
+/* Copyright (c) 2011 by The Authors.
+ * Published under the LGPL 2.1 license.
+ * See /license-notice.txt for the full text of the license notice.
+ * See /license.txt for the full text of the license.
+ */
+
+
+
+/**
+ * Constants representing the different topological locations which can occur in
+ * a {@link Geometry}. The constants are also used as the row and column
+ * indices of DE-9IM {@link IntersectionMatrix}es.
+ *
+ * @constructor
+ */
+jsts.geom.Location = function() {
+};
+
+
+/**
+ * The location value for the interior of a geometry. Also, DE-9IM row index of
+ * the interior of the first geometry and column index of the interior of the
+ * second geometry.
+ *
+ * @const
+ * @type {number}
+ */
+jsts.geom.Location.INTERIOR = 0;
+
+
+/**
+ * The location value for the boundary of a geometry. Also, DE-9IM row index of
+ * the boundary of the first geometry and column index of the boundary of the
+ * second geometry.
+ *
+ * @const
+ * @type {number}
+ */
+jsts.geom.Location.BOUNDARY = 1;
+
+
+/**
+ * The location value for the exterior of a geometry. Also, DE-9IM row index of
+ * the exterior of the first geometry and column index of the exterior of the
+ * second geometry.
+ *
+ * @const
+ * @type {number}
+ */
+jsts.geom.Location.EXTERIOR = 2;
+
+
+/**
+ * Used for uninitialized location values.
+ *
+ * @const
+ * @type {number}
+ */
+jsts.geom.Location.NONE = -1;
+
+
+/**
+ * Converts the location value to a location symbol, for example,
+ * <code>EXTERIOR => 'e'</code> .
+ *
+ * @param {number}
+ *          locationValue either EXTERIOR, BOUNDARY, INTERIOR or NONE.
+ * @return {string} either 'e', 'b', 'i' or '-'.
+ */
+jsts.geom.Location.toLocationSymbol = function(locationValue) {
+  switch (locationValue) {
+    case jsts.geom.Location.EXTERIOR:
+      return 'e';
+    case jsts.geom.Location.BOUNDARY:
+      return 'b';
+    case jsts.geom.Location.INTERIOR:
+      return 'i';
+    case jsts.geom.Location.NONE:
+      return '-';
+  }
+  throw new jsts.IllegalArgumentError('Unknown location value: ' +
+      locationValue);
+};
+
 
 
 
