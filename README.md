@@ -14,4 +14,4 @@ var unit = 'miles'
 var buffered = buffer(pt, 10, unit)
 
 console.log(buffered)
-```
+``` 
