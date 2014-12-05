@@ -1,5 +1,6 @@
 var featurecollection = require('turf-featurecollection');
 var destination = require('turf-destination');
+var point = require('turf-point');
 var polygon = require('turf-polygon');
 
 module.exports = function(feature, radius, units, resolution){
@@ -8,7 +9,11 @@ module.exports = function(feature, radius, units, resolution){
   if(geom.type === 'Point') {
     return pointBuffer(feature, radius, units, resolution);
   } else if(geom.type === 'MultiPoint') {
-
+    var buffers = []
+    geom.coordinates.forEach(function(coords) {
+      buffers.push(pointBuffer(point(coords[0], coords[1]), radius, units, resolution));      
+    });
+    return featurecollection(buffers)
   } else if(geom.type === 'LineString') {
 
   } else if(geom.type === 'MultiLineString') {
