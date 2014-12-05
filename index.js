@@ -15,7 +15,7 @@ module.exports = function(feature, radius, units, resolution){
     });
     return featurecollection(buffers)
   } else if(geom.type === 'LineString') {
-
+    return lineBuffer();
   } else if(geom.type === 'MultiLineString') {
 
   } else if(geom.type === 'Polygon') { 
@@ -37,4 +37,8 @@ function pointBuffer (pt, radius, units, resolution) {
   }
   
   return polygon([ring])
+}
+
+function lineBuffer () {
+
 }
