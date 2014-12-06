@@ -40,6 +40,7 @@ function pointBuffer (pt, radius, units, resolution) {
 }
 
 function lineBuffer (line, radius, units, resolution) {
+  var lineBuffers = featurecollection([])
   //break line into segments
   var segments = [];
   for(var i = 0; i < line.geometry.coordinates.length-1; i++) {
@@ -87,6 +88,8 @@ function lineBuffer (line, radius, units, resolution) {
     }
 
     poly.geometry.coordinates[0].push(bottomLeft.geometry.coordinates)
-    console.log(JSON.stringify(poly))
+    lineBuffers.features.push(poly);
   }
+  console.log(JSON.stringify(lineBuffers))
+  return lineBuffers;
 }
