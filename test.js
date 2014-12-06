@@ -14,7 +14,7 @@ test('buffer', function(t){
   var buffMultiPt = buffer(multipt, 10, 'miles', 100);
   buffMultiPt.features.push(multipt)
   fs.writeFileSync(__dirname+'/fixtures/out/multipoint.geojson', JSON.stringify(buffMultiPt));
-  var buffLine = buffer(line, 10, 'miles');
+  var buffLine = buffer(line, 0.4, 'miles');
   buffLine.features.push(line)
   fs.writeFileSync(__dirname+'/fixtures/out/linestring.geojson', JSON.stringify(buffLine));
   //var buffPoly = buffer(pt, 10, 'miles');

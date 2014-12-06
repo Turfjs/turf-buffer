@@ -29,6 +29,7 @@
     "tape": "^2.13.3"
   },
   "dependencies": {
+    "turf-bearing": "0.0.2",
     "turf-destination": "0.0.5",
     "turf-featurecollection": "^0.1.0",
     "turf-point": "^0.1.6",
