@@ -10,7 +10,7 @@ module.exports = function(feature, radius, units, resolution){
   if(geom.type === 'Point') {
     return pointBuffer(feature, radius, units, resolution);
   } else if(geom.type === 'MultiPoint') {
-    var buffers = []
+    var buffers = [];
     geom.coordinates.forEach(function(coords) {
       buffers.push(pointBuffer(point(coords[0], coords[1]), radius, units, resolution));      
     });
@@ -18,7 +18,10 @@ module.exports = function(feature, radius, units, resolution){
   } else if(geom.type === 'LineString') {
     return lineBuffer(feature, radius, units, resolution);
   } else if(geom.type === 'MultiLineString') {
-
+    var buffers = [];
+    geom.coordinates.forEach(function(line){
+      buffers.push(lineBuffer(feature, radius, units, resolution));
+    });
   } else if(geom.type === 'Polygon') { 
 
   } else if(geom.type === 'MultiPolygon') {
