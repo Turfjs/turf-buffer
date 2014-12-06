@@ -1,63 +1,98 @@
-// http://stackoverflow.com/questions/839899/how-do-i-calculate-a-point-on-a-circles-circumference
-// radians = degrees * (pi/180)
-// https://github.com/bjornharrtell/jsts/blob/master/examples/buffer.html
+var featurecollection = require('turf-featurecollection');
+var destination = require('turf-destination');
+var bearing = require('turf-bearing');
+var point = require('turf-point');
+var polygon = require('turf-polygon');
 
-var featurecollection = require('turf-featurecollection')
-var polygon = require('turf-polygon')
-var combine = require('turf-combine')
-var jsts = require('jsts')
+module.exports = function(feature, radius, units, resolution){
+  if(!resolution) resolution = 36;
+  var geom = feature.geometry
+  if(geom.type === 'Point') {
+    return pointBuffer(feature, radius, units, resolution);
+  } else if(geom.type === 'MultiPoint') {
+    var buffers = [];
+    geom.coordinates.forEach(function(coords) {
+      buffers.push(pointBuffer(point(coords[0], coords[1]), radius, units, resolution));      
+    });
+    return featurecollection(buffers)
+  } else if(geom.type === 'LineString') {
+    return lineBuffer(feature, radius, units, resolution);
+  } else if(geom.type === 'MultiLineString') {
+    var buffers = [];
+    geom.coordinates.forEach(function(line){
+      buffers.push(lineBuffer(feature, radius, units, resolution));
+    });
+  } else if(geom.type === 'Polygon') { 
 
-module.exports = function(feature, radius, units, done){
-  var buffered;
+  } else if(geom.type === 'MultiPolygon') {
 
-  done = done || function () {};
-
-  switch(units){
-    case 'miles':
-      radius = radius / 69.047
-      break
-    case 'kilometers':
-      radius = radius / 111.12
-      break
-    case 'degrees':
-      break
-  }
-
-  if(feature.type === 'FeatureCollection'){
-    var multi = combine(feature);
-    multi.properties = {}
-
-    buffered = bufferOp(multi, radius);
-
-    done(null, buffered);
-    return buffered;
-  }
-  else{
-    buffered = bufferOp(feature, radius);
-    
-    done(null, buffered);
-    return buffered;
   }
 }
 
-var bufferOp = function(feature, radius){
-  var reader = new jsts.io.GeoJSONReader()
-  var geom = reader.read(JSON.stringify(feature.geometry))
-  var buffered = geom.buffer(radius);
-  var parser = new jsts.io.GeoJSONParser()
-  buffered = parser.write(buffered)
+function pointBuffer (pt, radius, units, resolution) {
+  var ring = []
+  var resMultiple = 360/resolution;
+  for(var i  = 0; i < resolution; i++) {
+    var spoke = destination(pt, radius, i*resMultiple, units);
+    ring.push(spoke.geometry.coordinates);
+  }
+  if((ring[0][0] !== ring[ring.length-1][0]) && (ring[0][1] != ring[ring.length-1][1])) {
+    ring.push([ring[0][0], ring[0][1]]);
+  }
+  return polygon([ring])
+}
 
-  if(buffered.type === 'MultiPolygon'){
-    buffered = {
-      type: 'Feature',
-      geometry: buffered,
-      properties: {}
+function lineBuffer (line, radius, units, resolution) {
+  var lineBuffers = featurecollection([])
+  //break line into segments
+  var segments = [];
+  for(var i = 0; i < line.geometry.coordinates.length-1; i++) {
+    segments.push([line.geometry.coordinates[i], line.geometry.coordinates[i+1]]);
+  }
+  /*create a set of boxes parallel to the segments
+  
+    ---------
+
+ ((|¯¯¯¯¯¯¯¯¯|))
+(((|---------|)))
+ ((|_________|))
+
+  */
+  for(var i = 0; i < segments.length; i++) {
+    var bottom = point(segments[i][0][0], segments[i][0][1])
+    var top = point(segments[i][1][0], segments[i][1][1])
+
+    var direction = bearing(bottom, top);
+
+    var bottomLeft = destination(bottom, radius, direction - 90, units);
+    var bottomRight = destination(bottom, radius, direction + 90, units);
+    var topLeft = destination(top, radius, direction - 90, units);
+    var topRight = destination(top, radius, direction + 90, units);
+
+    var poly = polygon([[bottomLeft.geometry.coordinates, topLeft.geometry.coordinates]]);
+
+    // add top curve
+    var spokeNum = Math.floor(resolution/2);
+    var topStart = bearing(top, topLeft);
+    for(var k = 1; k < spokeNum; k++) {
+      var spokeDirection = topStart + (180 * (k/spokeNum))
+      var spoke = destination(top, radius, spokeDirection, units);
+      poly.geometry.coordinates[0].push(spoke.geometry.coordinates);
     }
-    buffered = featurecollection([buffered])
-  }
-  else{
-    buffered = featurecollection([polygon(buffered.coordinates)])
-  }
+    // add right edge
+    poly.geometry.coordinates[0].push(topRight.geometry.coordinates)
+    poly.geometry.coordinates[0].push(bottomRight.geometry.coordinates)
+    //add bottom curve
+    var bottomStart = bearing(bottom, bottomRight);
+    for(var k = 1; k < spokeNum; k++) {
+      var spokeDirection = (bottomStart + (180 * (k/spokeNum)))
+      var spoke = destination(bottom, radius, spokeDirection, units);
+      poly.geometry.coordinates[0].push(spoke.geometry.coordinates);
+    }
 
-  return buffered;
+    poly.geometry.coordinates[0].push(bottomLeft.geometry.coordinates)
+    lineBuffers.features.push(poly);
+  }
+  console.log(JSON.stringify(lineBuffers))
+  return lineBuffers;
 }
