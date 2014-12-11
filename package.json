@@ -26,6 +26,7 @@
   },
   "homepage": "https://github.com/morganherlocker/turf-buffer",
   "devDependencies": {
+    "benchmark": "^1.0.0",
     "tape": "^2.13.3"
   },
   "dependencies": {
