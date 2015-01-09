@@ -7,6 +7,24 @@ var polygon = require('turf-polygon');
 var combine = require('turf-combine');
 var jsts = require('jsts');
 
+/**
+* Calculates a buffer for a point, linestring, or polygon Feature/FeatureCollection for a given radius. Units supported are miles, kilometers, and degrees.
+*
+* @module turf/buffer
+* @param {FeatureCollection} feature - a Feature or FeatureCollection of any type
+* @param {Number} distance - Distance to draw the buffer
+* @param {String} unit - 'miles' or 'kilometers'
+* @return {FeatureCollection} buffered - a FeatureCollection containing polygons of buffers
+*
+* @example
+* var pt = turf.point(14.616599, -90.548630)
+* var unit = 'miles'
+*
+* var buffered = turf.buffer(pt, 10, unit)
+*
+* //=buffered
+*/
+
 module.exports = function(feature, radius, units, done){
   var buffered;
 
