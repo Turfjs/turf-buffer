@@ -34,8 +34,14 @@ module.exports = function(feature, radius, units, done){
     case 'miles':
       radius = radius / 69.047;
       break
+    case 'feet':
+      radius = radius / 364568.0;
+      break
     case 'kilometers':
       radius = radius / 111.12;
+      break
+    case 'meters':
+      radius = radius / 111120.0;
       break
     case 'degrees':
       break

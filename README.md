@@ -16,7 +16,7 @@ npm install turf-buffer
 |---|---|
 |feature|A Feature or FeatureCollection of any type|
 |distance|Distance to draw the buffer|
-|unit|'miles' or 'kilometers'|
+|unit|'miles', 'feet', 'meters' or 'kilometers'|
 
 ###Usage
 
