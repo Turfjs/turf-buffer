@@ -12,9 +12,9 @@ var jsts = require('jsts');
 *
 * @module turf/buffer
 * @param {FeatureCollection} feature - a Feature or FeatureCollection of any type
-* @param {Number} distance - Distance to draw the buffer
+* @param {Number} distance - distance to draw the buffer
 * @param {String} unit - 'miles' or 'kilometers'
-* @return {FeatureCollection} buffered - a FeatureCollection containing polygons of buffers
+* @return {FeatureCollection} a FeatureCollection containing {@link Polygon} features representing buffers
 *
 * @example
 * var pt = turf.point(14.616599, -90.548630)
