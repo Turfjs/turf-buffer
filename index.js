@@ -22,7 +22,10 @@ var jsts = require('jsts');
 *
 * var buffered = turf.buffer(pt, 500, unit);
 *
-* //=buffered
+* var result = turf.featurecollection(
+*   buffered.features.concat(pt));
+*
+* //=result
 */
 
 module.exports = function(feature, radius, units, done){
