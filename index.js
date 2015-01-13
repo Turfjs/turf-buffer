@@ -28,10 +28,8 @@ var jsts = require('jsts');
 * //=result
 */
 
-module.exports = function(feature, radius, units, done){
+module.exports = function(feature, radius, units){
   var buffered;
-
-  done = done || function () {};
 
   switch(units){
     case 'miles':
@@ -53,16 +51,11 @@ module.exports = function(feature, radius, units, done){
   if(feature.type === 'FeatureCollection'){
     var multi = combine(feature);
     multi.properties = {};
-
     buffered = bufferOp(multi, radius);
-
-    done(null, buffered);
     return buffered;
   }
   else{
     buffered = bufferOp(feature, radius);
-    
-    done(null, buffered);
     return buffered;
   }
 }
