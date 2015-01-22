@@ -4,11 +4,12 @@
   "description": "turf buffer module",
   "main": "index.js",
   "scripts": {
-    "test": "tape test.js"
+    "test": "tape test.js",
+    "doc": "dox -r < index.js | doxme --readme > README.md"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/morganherlocker/turf-buffer.git"
+    "url": "https://github.com/Turfjs/turf-buffer.git"
   },
   "keywords": [
     "buffer",
@@ -22,17 +23,19 @@
   "author": "morganherlocker",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/morganherlocker/turf-buffer/issues"
+    "url": "https://github.com/Turfjs/turf-buffer/issues"
   },
-  "homepage": "https://github.com/morganherlocker/turf-buffer",
+  "homepage": "https://github.com/Turfjs/turf-buffer",
   "devDependencies": {
     "benchmark": "^1.0.0",
-    "tape": "^3.0.3"
+    "tape": "^3.0.3",
+    "dox": "^0.6.1",
+    "doxme": "^1.4.2"
   },
   "dependencies": {
     "jsts": "^0.15.0",
-    "turf-combine": "1.0.1",
+    "turf-combine": "^1.0.1",
     "turf-featurecollection": "^1.0.0",
-    "turf-polygon": "^1.0.0"
+    "turf-polygon": "^1.0.1"
   }
 }
