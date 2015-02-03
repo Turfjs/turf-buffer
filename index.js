@@ -17,13 +17,23 @@ var jsts = require('jsts');
 * @return {FeatureCollection} a FeatureCollection containing {@link Polygon} features representing buffers
 *
 * @example
-* var pt = turf.point([-90.548630, 14.616599]);
+* var pt = {
+*   "type": "Feature",
+*   "properties": {},
+*   "geometry": {
+*     "type": "Point",
+*     "coordinates": [-90.548630, 14.616599]
+*   }
+* };
 * var unit = 'miles';
 *
 * var buffered = turf.buffer(pt, 500, unit);
 *
-* var result = turf.featurecollection(
-*   buffered.features.concat(pt));
+* var resultFeatures = buffered.features.concat(pt);
+* var result = {
+*   "type": "FeatureCollection",
+*   "features": resultFeatures
+* };
 *
 * //=result
 */
