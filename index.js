@@ -11,6 +11,7 @@ var jsts = require('jsts');
 * Calculates a buffer for a {@link Point}, {@link LineString}, or {@link Polygon} {@link Feature}/{@link FeatureCollection} for a given radius. Units supported are miles, kilometers, and degrees.
 *
 * @module turf/buffer
+* @category transformation
 * @param {FeatureCollection} feature a Feature or FeatureCollection of any type
 * @param {Number} distance distance to draw the buffer
 * @param {String} unit 'miles' or 'kilometers'
