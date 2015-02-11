@@ -14,7 +14,7 @@ var jsts = require('jsts');
 * @category transformation
 * @param {FeatureCollection} feature a Feature or FeatureCollection of any type
 * @param {Number} distance distance to draw the buffer
-* @param {String} unit 'miles' or 'kilometers'
+* @param {String} unit 'miles', 'feet', 'kilometers', 'meters', or 'degrees'
 * @return {FeatureCollection} a FeatureCollection containing {@link Polygon} features representing buffers
 *
 * @example
