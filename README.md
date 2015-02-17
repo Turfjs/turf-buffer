@@ -12,23 +12,33 @@ Calculates a buffer for a Point, LineString, or Polygon Feature/FeatureCollectio
 
 ### Parameters
 
-| parameter  | type              | description                                |
-| ---------- | ----------------- | ------------------------------------------ |
-| `feature`  | FeatureCollection | a Feature or FeatureCollection of any type |
-| `distance` | Number            | distance to draw the buffer                |
-| `unit`     | String            | 'miles' or 'kilometers'                    |
+| parameter  | type              | description                                           |
+| ---------- | ----------------- | ----------------------------------------------------- |
+| `feature`  | FeatureCollection | a Feature or FeatureCollection of any type            |
+| `distance` | Number            | distance to draw the buffer                           |
+| `unit`     | String            | 'miles', 'feet', 'kilometers', 'meters', or 'degrees' |
 
 
 ### Example
 
 ```js
-var pt = turf.point([-90.548630, 14.616599]);
+var pt = {
+  "type": "Feature",
+  "properties": {},
+  "geometry": {
+    "type": "Point",
+    "coordinates": [-90.548630, 14.616599]
+  }
+};
 var unit = 'miles';
 
 var buffered = turf.buffer(pt, 500, unit);
 
-var result = turf.featurecollection(
-  buffered.features.concat(pt));
+var resultFeatures = buffered.features.concat(pt);
+var result = {
+  "type": "FeatureCollection",
+  "features": resultFeatures
+};
 
 //=result
 ```
@@ -46,4 +56,5 @@ $ npm install turf-buffer
 ```sh
 $ npm test
 ```
+
 
