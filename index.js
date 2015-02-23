@@ -39,56 +39,54 @@ var jsts = require('jsts');
 * //=result
 */
 
-module.exports = function(feature, radius, units){
+module.exports = function(feature, radius, units) {
   var buffered;
 
-  switch(units){
+  switch (units) {
     case 'miles':
       radius = radius / 69.047;
-      break
+    break;
     case 'feet':
       radius = radius / 364568.0;
-      break
+    break;
     case 'kilometers':
       radius = radius / 111.12;
-      break
+    break;
     case 'meters':
       radius = radius / 111120.0;
-      break
+    break;
     case 'degrees':
-      break
+    break;
   }
 
-  if(feature.type === 'FeatureCollection'){
+  if (feature.type === 'FeatureCollection') {
     var multi = combine(feature);
     multi.properties = {};
     buffered = bufferOp(multi, radius);
     return buffered;
-  }
-  else{
+  } else {
     buffered = bufferOp(feature, radius);
     return buffered;
   }
-}
+};
 
-var bufferOp = function(feature, radius){
+var bufferOp = function(feature, radius) {
   var reader = new jsts.io.GeoJSONReader();
   var geom = reader.read(JSON.stringify(feature.geometry));
   var buffered = geom.buffer(radius);
   var parser = new jsts.io.GeoJSONParser();
   buffered = parser.write(buffered);
 
-  if(buffered.type === 'MultiPolygon'){
+  if (buffered.type === 'MultiPolygon') {
     buffered = {
       type: 'Feature',
       geometry: buffered,
       properties: {}
     };
     buffered = featurecollection([buffered]);
-  }
-  else{
+  } else {
     buffered = featurecollection([polygon(buffered.coordinates)]);
   }
 
   return buffered;
-}
+};
