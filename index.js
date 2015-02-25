@@ -8,14 +8,14 @@ var combine = require('turf-combine');
 var jsts = require('jsts');
 
 /**
-* Calculates a buffer for a {@link Point}, {@link LineString}, or {@link Polygon} {@link Feature}/{@link FeatureCollection} for a given radius. Units supported are miles, kilometers, and degrees.
+* Calculates a buffer for input features for a given radius. Units supported are miles, kilometers, and degrees.
 *
 * @module turf/buffer
 * @category transformation
-* @param {FeatureCollection} feature a Feature or FeatureCollection of any type
+* @param {(Feature<(Point|LineString|Polygon)>|FeatureCollection<(Point|LineString|Polygon)>)} feature input to be buffered
 * @param {Number} distance distance to draw the buffer
 * @param {String} unit 'miles', 'feet', 'kilometers', 'meters', or 'degrees'
-* @return {FeatureCollection} a FeatureCollection containing {@link Polygon} features representing buffers
+* @return {FeatureCollection<Polygon>} buffered features
 *
 * @example
 * var pt = {
