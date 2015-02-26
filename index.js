@@ -12,7 +12,7 @@ var jsts = require('jsts');
 *
 * @module turf/buffer
 * @category transformation
-* @param {(Feature<(Point|LineString|Polygon)>|FeatureCollection<(Point|LineString|Polygon)>)} feature input to be buffered
+* @param {(Feature|FeatureCollection)} feature input to be buffered
 * @param {Number} distance distance to draw the buffer
 * @param {String} unit 'miles', 'feet', 'kilometers', 'meters', or 'degrees'
 * @return {FeatureCollection<Polygon>} buffered features
