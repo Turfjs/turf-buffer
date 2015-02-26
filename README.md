@@ -7,16 +7,16 @@ turf buffer module
 
 ### `turf.buffer(feature, distance, unit)`
 
-Calculates a buffer for a Point, LineString, or Polygon Feature/FeatureCollection for a given radius. Units supported are miles, kilometers, and degrees.
+Calculates a buffer for input features for a given radius. Units supported are miles, kilometers, and degrees.
 
 
 ### Parameters
 
-| parameter  | type              | description                                           |
-| ---------- | ----------------- | ----------------------------------------------------- |
-| `feature`  | FeatureCollection | a Feature or FeatureCollection of any type            |
-| `distance` | Number            | distance to draw the buffer                           |
-| `unit`     | String            | 'miles', 'feet', 'kilometers', 'meters', or 'degrees' |
+| parameter  | type                       | description                                           |
+| ---------- | -------------------------- | ----------------------------------------------------- |
+| `feature`  | Feature\,FeatureCollection | input to be buffered                                  |
+| `distance` | Number                     | distance to draw the buffer                           |
+| `unit`     | String                     | 'miles', 'feet', 'kilometers', 'meters', or 'degrees' |
 
 
 ### Example
@@ -42,6 +42,9 @@ var result = {
 
 //=result
 ```
+
+
+**Returns** `FeatureCollection.<Polygon>`, buffered features 
 
 ## Installation
 
