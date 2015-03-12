@@ -41,6 +41,8 @@ var jsts = require('jsts');
 
 module.exports = function(feature, radius, units) {
   var buffered;
+  
+  units = units || 'feet';
 
   switch (units) {
     case 'miles':
