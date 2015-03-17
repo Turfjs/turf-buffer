@@ -29,7 +29,7 @@
   "devDependencies": {
     "benchmark": "^1.0.0",
     "dox": "^0.6.1",
-    "doxme": "^1.4.3",
+    "doxme": "^1.8.2",
     "glob": "^5.0.3",
     "tape": "^3.5.0",
     "turf-distance": "^1.0.1",
@@ -39,8 +39,8 @@
   "dependencies": {
     "geojson-normalize": "0.0.0",
     "jsts": "^0.15.0",
-    "turf-combine": "^1.0.1",
-    "turf-featurecollection": "^1.0.0",
-    "turf-polygon": "^1.0.2"
+    "turf-combine": "^1.0.2",
+    "turf-featurecollection": "^1.0.1",
+    "turf-polygon": "^1.0.3"
   }
 }
