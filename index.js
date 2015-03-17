@@ -6,6 +6,7 @@ var featurecollection = require('turf-featurecollection');
 var polygon = require('turf-polygon');
 var combine = require('turf-combine');
 var jsts = require('jsts');
+var normalize = require('geojson-normalize');
 
 /**
 * Calculates a buffer for input features for a given radius. Units supported are miles, kilometers, and degrees.
@@ -59,15 +60,13 @@ module.exports = function(feature, radius, units) {
     break;
   }
 
-  if (feature.type === 'FeatureCollection') {
-    var multi = combine(feature);
-    multi.properties = {};
-    buffered = bufferOp(multi, radius);
-    return buffered;
-  } else {
-    buffered = bufferOp(feature, radius);
-    return buffered;
-  }
+  var fc = normalize(feature);
+  var buffered = normalize(featurecollection(fc.features.map(function(f){
+    return bufferOp(f, radius);
+  })));
+
+  if(buffered.features.length > 1) return buffered;
+  else if(buffered.features.length === 1) return buffered.features[0];
 };
 
 var bufferOp = function(feature, radius) {
@@ -77,16 +76,9 @@ var bufferOp = function(feature, radius) {
   var parser = new jsts.io.GeoJSONParser();
   buffered = parser.write(buffered);
 
-  if (buffered.type === 'MultiPolygon') {
-    buffered = {
-      type: 'Feature',
-      geometry: buffered,
-      properties: {}
-    };
-    buffered = featurecollection([buffered]);
-  } else {
-    buffered = featurecollection([polygon(buffered.coordinates)]);
-  }
-
-  return buffered;
+  return {
+    type: 'Feature',
+    geometry: buffered,
+    properties: {}
+  };
 };
