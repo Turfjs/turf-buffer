@@ -44,7 +44,7 @@ var result = {
 ```
 
 
-**Returns** `FeatureCollection.<Polygon>`, buffered features 
+**Returns** `FeatureCollection.<Polygon>,FeatureCollection.<MultiPolygon>,Polygon,MultiPolygon`, buffered features 
 
 ## Installation
 
