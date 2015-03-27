@@ -54,6 +54,7 @@ module.exports = function(feature, radius, units) {
       radius = radius / 111.12;
     break;
     case 'meters':
+    case 'metres':
       radius = radius / 111120.0;
     break;
     case 'degrees':
