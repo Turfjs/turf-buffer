@@ -3,8 +3,6 @@
 // https://github.com/bjornharrtell/jsts/blob/master/examples/buffer.html
 
 var featurecollection = require('turf-featurecollection');
-var polygon = require('turf-polygon');
-var combine = require('turf-combine');
 var jsts = require('jsts');
 var normalize = require('geojson-normalize');
 
@@ -41,7 +39,6 @@ var normalize = require('geojson-normalize');
 */
 
 module.exports = function(feature, radius, units) {
-  var buffered;
 
   switch (units) {
     case 'miles':
@@ -61,7 +58,7 @@ module.exports = function(feature, radius, units) {
   }
 
   var fc = normalize(feature);
-  var buffered = normalize(featurecollection(fc.features.map(function(f){
+  var buffered = normalize(featurecollection(fc.features.map(function(f) {
     return bufferOp(f, radius);
   })));
 
