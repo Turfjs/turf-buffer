@@ -1,6 +1,6 @@
 {
   "name": "turf-buffer",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "dependencies": {
     "geojson-normalize": {
       "version": "0.0.0",
