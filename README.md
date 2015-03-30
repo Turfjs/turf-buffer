@@ -12,11 +12,11 @@ Calculates a buffer for input features for a given radius. Units supported are m
 
 ### Parameters
 
-| parameter  | type                       | description                                           |
-| ---------- | -------------------------- | ----------------------------------------------------- |
-| `feature`  | Feature\,FeatureCollection | input to be buffered                                  |
-| `distance` | Number                     | distance to draw the buffer                           |
-| `unit`     | String                     | 'miles', 'feet', 'kilometers', 'meters', or 'degrees' |
+| parameter  | type                      | description                                           |
+| ---------- | ------------------------- | ----------------------------------------------------- |
+| `feature`  | Feature,FeatureCollection | input to be buffered                                  |
+| `distance` | Number                    | distance to draw the buffer                           |
+| `unit`     | String                    | 'miles', 'feet', 'kilometers', 'meters', or 'degrees' |
 
 
 ### Example
@@ -33,18 +33,10 @@ var pt = {
 var unit = 'miles';
 
 var buffered = turf.buffer(pt, 500, unit);
-
-var resultFeatures = buffered.features.concat(pt);
-var result = {
-  "type": "FeatureCollection",
-  "features": resultFeatures
-};
+var result = turf.featurecollection([buffered, pt]);
 
 //=result
 ```
-
-
-**Returns** `FeatureCollection.<Polygon>,FeatureCollection.<MultiPolygon>,Polygon,MultiPolygon`, buffered features 
 
 ## Installation
 
@@ -59,5 +51,4 @@ $ npm install turf-buffer
 ```sh
 $ npm test
 ```
-
 

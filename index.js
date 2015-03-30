@@ -28,12 +28,7 @@ var normalize = require('geojson-normalize');
 * var unit = 'miles';
 *
 * var buffered = turf.buffer(pt, 500, unit);
-*
-* var resultFeatures = buffered.features.concat(pt);
-* var result = {
-*   "type": "FeatureCollection",
-*   "features": resultFeatures
-* };
+* var result = turf.featurecollection([buffered, pt]);
 *
 * //=result
 */

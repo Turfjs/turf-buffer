@@ -28,7 +28,7 @@
   "homepage": "https://github.com/Turfjs/turf-buffer",
   "devDependencies": {
     "benchmark": "^1.0.0",
-    "dox": "^0.6.1",
+    "dox": "^0.7.0",
     "doxme": "^1.8.2",
     "glob": "^5.0.3",
     "tape": "^3.5.0",
