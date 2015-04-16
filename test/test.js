@@ -30,7 +30,10 @@ test('buffer', function(t){
       if(fixture.geometry.type === 'MultiLineString') t.equals(buffed.geometry.type, 'MultiPolygon');
       if(fixture.geometry.type === 'MultiPolygon') t.equals(buffed.geometry.type, 'MultiPolygon');
       if(fixture.geometry.type === 'GeometryCollection') t.equals(buffed.geometry.type, 'MultiPolygon');
-    } else t.equals(buffed.type, 'FeatureCollection');
+    } else {
+      t.equals(fixture.type, buffed.type);
+      t.equals(buffed.type, 'FeatureCollection');
+    }
 
     buffed = normalize(buffed);
     buffed.features = buffed.features.map(function(f) {
