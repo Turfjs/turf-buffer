@@ -33,7 +33,12 @@ var pt = {
 var unit = 'miles';
 
 var buffered = turf.buffer(pt, 500, unit);
-var result = turf.featurecollection([buffered.features, pt]);
+
+// Add pt to the end of the buffer geometry
+var features = buffered.features;
+features.push(pt);
+
+var result = turf.featurecollection(features);
 
 //=result
 ```
