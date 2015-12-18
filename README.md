@@ -33,13 +33,13 @@ var pt = {
 var unit = 'miles';
 
 var buffered = turf.buffer(pt, 500, unit);
-var result = turf.featurecollection([buffered.features, pt]);
+var result = turf.featurecollection([buffered, pt]);
 
 //=result
 ```
 
 
-**Returns** `FeatureCollection.<Polygon>,FeatureCollection.<MultiPolygon>,Polygon,MultiPolygon`, buffered features
+**Returns** `FeatureCollection.<Polygon>,FeatureCollection.<MultiPolygon>,Polygon,MultiPolygon`, buffered features 
 
 ## Installation
 
@@ -54,3 +54,5 @@ $ npm install turf-buffer
 ```sh
 $ npm test
 ```
+
+
