@@ -42,85 +42,30 @@ function pointBuffer (pt, radius, units, resolution) {
 }
 
 function lineBuffer (line, radius, units, resolution) {
-
   var lineBuffer = [];
+
   var firstLinePoint = helpers.point(line.geometry.coordinates[0]);
   var firstLineBearing = bearing(helpers.point(line.geometry.coordinates[0]), helpers.point(line.geometry.coordinates[1]));
   var firstBufferPoint = destination(firstLinePoint, radius, firstLineBearing + 90, units);
   var lastLinePoint = helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-1]);
   var lastLineBearing = bearing(helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-2]), helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-1]));
+
   lineBuffer.push.apply(lineBuffer,[firstBufferPoint.geometry.coordinates]);
-  lineBuffer.push.apply(lineBuffer,lineBufferOneSide(line, radius, units, resolution, true, false).geometry.coordinates);
+  lineBuffer.push.apply(lineBuffer,lineBufferOneSide(line, radius, units, resolution, false, true).geometry.coordinates);
   lineBuffer.push.apply(lineBuffer,arc(lastLinePoint, radius, lastLineBearing + 90, lastLineBearing - 90, units, resolution, true).geometry.coordinates);
   lineBuffer.push.apply(lineBuffer,lineBufferOneSide(line, radius, units, resolution, true, true).geometry.coordinates);
   lineBuffer.push.apply(lineBuffer,arc(firstLinePoint, radius, firstLineBearing - 90, firstLineBearing + 90, units, resolution, true).geometry.coordinates);
 
   return helpers.polygon([lineBuffer]);
-  /*
-  var lineBuffers = featurecollection([])
-  //break line into segments
-  var segments = [];
-  for(var i = 0; i < line.geometry.coordinates.length-1; i++) {
-    segments.push([line.geometry.coordinates[i], line.geometry.coordinates[i+1]]);
-  }
-  */
-  /*create a set of boxes parallel to the segments
-
-    ---------
-
- ((|¯¯¯¯¯¯¯¯¯|))
-(((|---------|)))
- ((|_________|))
-
-  */
-  /*
-  for(var i = 0; i < segments.length; i++) {
-    var bottom = point(segments[i][0][0], segments[i][0][1])
-    var top = point(segments[i][1][0], segments[i][1][1])
-
-    var direction = bearing(bottom, top);
-
-    var bottomLeft = destination(bottom, radius, direction - 90, units);
-    var bottomRight = destination(bottom, radius, direction + 90, units);
-    var topLeft = destination(top, radius, direction - 90, units);
-    var topRight = destination(top, radius, direction + 90, units);
-
-    var poly = polygon([[bottomLeft.geometry.coordinates, topLeft.geometry.coordinates]]);
-
-    // add top curve
-    var spokeNum = Math.floor(resolution/2);
-    var topStart = bearing(top, topLeft);
-    for(var k = 1; k < spokeNum; k++) {
-      var spokeDirection = topStart + (180 * (k/spokeNum))
-      var spoke = destination(top, radius, spokeDirection, units);
-      poly.geometry.coordinates[0].push(spoke.geometry.coordinates);
-    }
-    // add right edge
-    poly.geometry.coordinates[0].push(topRight.geometry.coordinates)
-    poly.geometry.coordinates[0].push(bottomRight.geometry.coordinates)
-    //add bottom curve
-    var bottomStart = bearing(bottom, bottomRight);
-    for(var k = 1; k < spokeNum; k++) {
-      var spokeDirection = (bottomStart + (180 * (k/spokeNum)))
-      var spoke = destination(bottom, radius, spokeDirection, units);
-      poly.geometry.coordinates[0].push(spoke.geometry.coordinates);
-    }
-
-    poly.geometry.coordinates[0].push(bottomLeft.geometry.coordinates)
-    lineBuffers.features.push(poly);
-  }
-  console.log(JSON.stringify(lineBuffers))
-  return lineBuffers;
-  */
 }
 
-function lineBufferOneSide (line, radius, units, resolution, right, reverse) {
-  if(right === undefined) var right = true;
+function lineBufferOneSide (line, radius, units, resolution, reverse, right) {
   if(reverse === undefined) var reverse = false;
+  if(right === undefined) var right = true;
   var coords = line.geometry.coordinates;
   if(reverse) coords = coords.reverse();
   var lineBuffer = [];
-  if (coords.length == 2) return lineBuffer;
+  if (coords.length == 2) return helpers.lineString(lineBuffer)
   var currentLinePoint = helpers.point(coords[1]);
   var currentLineBearing = bearing(helpers.point(coords[0]), helpers.point(coords[1]));
   for (var i = 1; i < coords.length-1; i++) {
