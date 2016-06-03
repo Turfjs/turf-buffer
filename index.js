@@ -82,13 +82,24 @@ function arc (pt, radius, bearing1, bearing2, units, resolution, right) {
   if(right === undefined) var right = true;
   var arc = [];
   var resMultiple = 360/resolution;
-  var steps = Math.floor((Math.pow(-1, right + 1) * (bearing1 - bearing2)).mod(360)/resMultiple);
-  for(var i  = 0; i < steps; i++) {
-    var spoke = destination(pt, radius, bearing1 + Math.pow(-1, !right + 1) * i * resMultiple, units);
-    arc.push(spoke.geometry.coordinates);
-
+  if (right) {
+      var bearing = Math.floor(bearing1/resMultiple)*resMultiple;
+  } else {
+    var bearing = Math.ceil(bearing1/resMultiple)*resMultiple;
   }
-  if(bearing1 - i * resMultiple != bearing2) {
+  if (bearing != bearing1) {
+    var spoke = destination(pt, radius, bearing1, units);
+    arc.push(spoke.geometry.coordinates);
+  }
+  var numSteps = Math.ceil((Math.pow(-1, right + 1) * (bearing - bearing2)).mod(360)/resMultiple);
+  var step = numSteps;
+  while (step) {
+    var spoke = destination(pt, radius, bearing, units);
+    arc.push(spoke.geometry.coordinates);
+    bearing = bearing + Math.pow(-1, !right + 1) * resMultiple;
+    step--;
+  }
+  if(bearing != bearing2) {
     var spoke = destination(pt, radius, bearing2, units);
     arc.push(spoke.geometry.coordinates);
   }
