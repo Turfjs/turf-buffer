@@ -1,5 +1,4 @@
 var simplepolygon = require('../simplepolygon');
-var featurecollection = require('turf-featurecollection');
 var destination = require('turf-destination');
 var bearing = require('turf-bearing');
 var helpers = require('turf-helpers');
@@ -18,7 +17,7 @@ module.exports = function(feature, radius, units, resolution){
     geom.coordinates.forEach(function(coords) {
       buffers.push(pointBuffer(helpers.point(coords), radius, units, resolution));
     });
-    return featurecollection(buffers)
+    return helpers.featureCollection(buffers)
   } else if(geom.type === 'LineString') {
     return lineBuffer(feature, radius, units, resolution);
   } else if(geom.type === 'MultiLineString') {
@@ -26,7 +25,7 @@ module.exports = function(feature, radius, units, resolution){
     geom.coordinates.forEach(function(coords) {
       buffers.push(lineBuffer(helpers.lineString(coords), radius, units, resolution));
     });
-    return featurecollection(buffers)
+    return helpers.featureCollection(buffers)
   } else if(geom.type === 'Polygon') {
     return polygonBuffer(feature, radius, units, resolution);
   } else if(geom.type === 'MultiPolygon') {
@@ -34,7 +33,7 @@ module.exports = function(feature, radius, units, resolution){
     geom.coordinates.forEach(function(coords) {
       buffers.push(polygonBuffer(helpers.polygon(coords), radius, units, resolution));
     });
-    return featurecollection(buffers)
+    return helpers.featureCollection(buffers)
   }
 }
 
