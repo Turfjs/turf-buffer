@@ -51,83 +51,85 @@ function pointBuffer(pt, radius, units, resolution) {
 }
 
 function lineBuffer(line, radius, units, resolution) {
-  var lineBuffer = [];
+  var lineOffset = [];
 
-  // situation at current point = point 0
-  var currentLinePoint = helpers.point(line.geometry.coordinates[0]);
-  var nextLineBearing = bearing(helpers.point(line.geometry.coordinates[0]), helpers.point(line.geometry.coordinates[1]));
-  var currentBufferPoint = destination(currentLinePoint, radius, nextLineBearing + 90, units);
-  var previousLinePoint = helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-1]);
-  var previousLineBearing = bearing(helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-2]), helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-1]));
+  if (!(line.geometry.coordinates[0].equals(line.geometry.coordinates[line.geometry.coordinates.length-1]))) {
 
-  lineBuffer.push.apply(lineBuffer,[currentBufferPoint.geometry.coordinates]); // Add first buffer point in order to close ring
-  lineBuffer.push.apply(lineBuffer,lineBufferOneSide(line, radius, units, resolution, false, true).geometry.coordinates);
-  lineBuffer.push.apply(lineBuffer,arc(previousLinePoint, radius, previousLineBearing + 90, previousLineBearing - 90, units, resolution, true).geometry.coordinates);
-  lineBuffer.push.apply(lineBuffer,lineBufferOneSide(line, radius, units, resolution, true, true).geometry.coordinates);
-  lineBuffer.push.apply(lineBuffer,arc(currentLinePoint, radius, nextLineBearing - 90, nextLineBearing + 90, units, resolution, true).geometry.coordinates);
+    // situation at current point = point 0
+    var currentLinePoint = helpers.point(line.geometry.coordinates[0]);
+    var nextLineBearing = bearing(helpers.point(line.geometry.coordinates[0]), helpers.point(line.geometry.coordinates[1]));
+    var currentBufferPoint = destination(currentLinePoint, radius, nextLineBearing + 90, units);
+    var previousLinePoint = helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-1]);
+    var previousLineBearing = bearing(helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-2]), helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-1]));
 
-  return filterNetWinding(simplepolygon(helpers.polygon([lineBuffer])), function (netWinding){return netWinding == 1}).features[0];
+    lineOffset.push.apply(lineOffset,[currentBufferPoint.geometry.coordinates]); // Add first buffer point in order to close ring
+    lineOffset.push.apply(lineOffset,lineOffsetOneSide(line, radius, units, resolution, false, true).geometry.coordinates);
+    lineOffset.push.apply(lineOffset,arc(previousLinePoint, radius, previousLineBearing + 90, previousLineBearing - 90, units, resolution, true).geometry.coordinates);
+    lineOffset.push.apply(lineOffset,lineOffsetOneSide(line, radius, units, resolution, true, true).geometry.coordinates);
+    lineOffset.push.apply(lineOffset,arc(currentLinePoint, radius, nextLineBearing - 90, nextLineBearing + 90, units, resolution, true).geometry.coordinates);
+
+    return offsetToBuffer(helpers.polygon([lineOffset]));
+
+  } else {
+
+    lineOffset.push(ringOffsetOneSide(line, radius, units, resolution, false, true).geometry.coordinates);
+    lineOffset.push(ringOffsetOneSide(line, radius, units, resolution, true, true).geometry.coordinates);
+
+    return offsetToBuffer(helpers.polygon(lineOffset));
+  }
 }
 
 function polygonBuffer(poly, radius, units, resolution) {
+  var polygonOffset = [];
 
-  var offsetPolygon = [];
-  offsetPolygon.push(ringBufferOneSide(helpers.lineString(poly.geometry.coordinates[0]), radius, units, resolution, false, true).geometry.coordinates);
+  polygonOffset.push(ringOffsetOneSide(helpers.lineString(poly.geometry.coordinates[0]), radius, units, resolution, false, true).geometry.coordinates);
   for (var i = 1; i < poly.geometry.coordinates.length; i++) {
-    offsetPolygon.push(ringBufferOneSide(helpers.lineString(poly.geometry.coordinates[i]), radius, units, resolution, false, true).geometry.coordinates);
+    polygonOffset.push(ringOffsetOneSide(helpers.lineString(poly.geometry.coordinates[i]), radius, units, resolution, false, true).geometry.coordinates);
   }
 
-  offsetPolygon = helpers.polygon(offsetPolygon);
-
-  var unionWithWindingOne = unionFeatureCollection(filterNetWinding(simplepolygon(offsetPolygon), function (netWinding){return netWinding == 1}));
-  var unionWithWindingZero = unionFeatureCollection(filterNetWinding(simplepolygon(offsetPolygon), function (netWinding){return netWinding == 0}));
-  // This last one might have winding -1, so we might have to rewind it if the difference algorithm requires so
-
-  if (unionWithWindingOne.geometry == null) return {type: "Feature", geometry: null};
-  if (unionWithWindingZero.geometry == null) return unionWithWindingOne;
-  return difference(unionWithWindingOne, unionWithWindingZero);
+  return offsetToBuffer(helpers.polygon(polygonOffset));
 }
 
-function lineBufferOneSide(line, radius, units, resolution, reverse, right) {
-  if(reverse === undefined) var reverse = false;
-  if(right === undefined) var right = true;
+function lineOffsetOneSide(line, radius, units, resolution, reverse, right) {
+  if (reverse === undefined) var reverse = false;
+  if (right === undefined) var right = true;
+  if (reverse) line.geometry.coordinates = line.geometry.coordinates.reverse();
   var coords = line.geometry.coordinates;
-  if(reverse) coords = coords.reverse();
-  var lineBuffer = [];
-  if (coords.length == 2) return helpers.lineString(lineBuffer)
+  var lineOffset = [];
+  if (coords.length == 2) return helpers.lineString(lineOffset)
 
   var currentLinePoint = helpers.point(coords[1]);
   var previousLineBearing = bearing(helpers.point(coords[0]), helpers.point(coords[1]));
   for (var i = 1; i < coords.length-1; i++) {
     var nextLinePoint = helpers.point(coords[i+1]);
     var nextLineBearing = bearing(currentLinePoint, nextLinePoint);
-    lineBuffer.push.apply(lineBuffer, arc(currentLinePoint, radius, previousLineBearing + Math.pow(-1, right + 1) * 90, nextLineBearing + Math.pow(-1, right + 1) * 90, units, resolution, right, true).geometry.coordinates);
+    lineOffset.push.apply(lineOffset, arc(currentLinePoint, radius, previousLineBearing + Math.pow(-1, right + 1) * 90, nextLineBearing + Math.pow(-1, right + 1) * 90, units, resolution, right, true).geometry.coordinates);
     var currentLinePoint = nextLinePoint;
     var previousLineBearing = nextLineBearing;
   }
 
-  return helpers.lineString(lineBuffer)
+  return helpers.lineString(lineOffset)
 }
 
-function ringBufferOneSide(ring, radius, units, resolution, reverse, right) {
-  if(reverse === undefined) var reverse = false;
-  if(right === undefined) var right = true;
-  var coords = ring.geometry.coordinates;
-  if(reverse) coords = coords.reverse();
-  var ringBuffer = [];
+function ringOffsetOneSide(ring, radius, units, resolution, reverse, right) {
+  if (reverse === undefined) var reverse = false;
+  if (right === undefined) var right = true;
+  if (reverse) ring.geometry.coordinates = ring.geometry.coordinates.reverse();
+  var coords = ring.geometry.coordinates; // ring is a linestring
+  var ringOffset = [];
 
   // situation at current point = point 0
-  var currentRingPoint = helpers.point(ring.geometry.coordinates[0]);
-  var nextRingBearing = bearing(helpers.point(ring.geometry.coordinates[0]), helpers.point(ring.geometry.coordinates[1]));
+  var currentRingPoint = helpers.point(coords[0]);
+  var nextRingBearing = bearing(helpers.point(coords[0]), helpers.point(coords[1]));
   var currentBufferPoint = destination(currentRingPoint, radius, nextRingBearing + 90, units);
-  var previousRingPoint = helpers.point(ring.geometry.coordinates[ring.geometry.coordinates.length-1]);
-  var previousRingBearing = bearing(helpers.point(ring.geometry.coordinates[ring.geometry.coordinates.length-2]), helpers.point(ring.geometry.coordinates[ring.geometry.coordinates.length-1]));
+  var previousRingPoint = helpers.point(coords[coords.length-1]);
+  var previousRingBearing = bearing(helpers.point(coords[coords.length-2]), helpers.point(coords[coords.length-1]));
 
-  ringBuffer.push.apply(ringBuffer, [currentBufferPoint.geometry.coordinates]); // Add first buffer point in order to close ring
-  ringBuffer.push.apply(ringBuffer, lineBufferOneSide(ring, radius, units, resolution, reverse, right).geometry.coordinates);
-  ringBuffer.push.apply(ringBuffer, arc(currentRingPoint, radius, previousRingBearing + Math.pow(-1, right + 1) * 90, nextRingBearing + Math.pow(-1, right + 1) * 90, units, resolution, right).geometry.coordinates);
+  ringOffset.push.apply(ringOffset, [currentBufferPoint.geometry.coordinates]); // Add first buffer point in order to close ring
+  ringOffset.push.apply(ringOffset, lineOffsetOneSide(ring, radius, units, resolution, false, right).geometry.coordinates);
+  ringOffset.push.apply(ringOffset, arc(currentRingPoint, radius, previousRingBearing + Math.pow(-1, right + 1) * 90, nextRingBearing + Math.pow(-1, right + 1) * 90, units, resolution, right, true).geometry.coordinates);
 
-  return helpers.lineString(ringBuffer)
+  return helpers.lineString(ringOffset)
 }
 
 function arc(pt, radius, bearing1, bearing2, units, resolution, right, shortcut) {
@@ -143,21 +145,24 @@ function arc(pt, radius, bearing1, bearing2, units, resolution, right, shortcut)
   var angle = (Math.pow(-1, right + 1) * (bearing1 - bearing2)).mod(360);
   var numSteps = Math.ceil((Math.pow(-1, right + 1) * (bearing - bearing2)).mod(360)/resMultiple);
   var step = numSteps;
-  if (bearing != bearing1) {
-    var spoke = destination(pt, radius, bearing1, units);
-    arc.push(spoke.geometry.coordinates);
-  }
+  // Add spoke for bearing1
+  var spoke = destination(pt, radius, bearing1, units);
+  arc.push(spoke.geometry.coordinates);
   if (!(angle > 180 && shortcut)) {
     while (step) {
-      var spoke = destination(pt, radius, bearing, units);
-      arc.push(spoke.geometry.coordinates);
-      // the value of bearing is independent of bearing1 and bearing2, such that multiple arcs with the same centerpoint coincide, instead of zigzag overlapping
+      // Only add spokes for bearings different than the first and last
+      if (!(bearing == bearing1) || (bearing == bearing2)) {
+        spoke = destination(pt, radius, bearing, units);
+        arc.push(spoke.geometry.coordinates);
+      }
+      // The value of bearing is independent of bearing1 and bearing2, such that multiple arcs with the same centerpoint coincide, instead of zigzag overlapping
       bearing = bearing + Math.pow(-1, !right + 1) * resMultiple;
       step--;
     }
   }
-  if(bearing != bearing2) {
-    var spoke = destination(pt, radius, bearing2, units);
+  // Only add spoke for bearing2 if it's not a straight line (equivalently: angle == 0)
+  if (!((bearing == bearing1) && (bearing1 == bearing2))) {
+    spoke = destination(pt, radius, bearing2, units);
     arc.push(spoke.geometry.coordinates);
   }
   return helpers.lineString(arc)
@@ -181,6 +186,16 @@ function unionFeatureCollection(fc) {
     incrementalUnion = union(incrementalUnion, fc.features[i]);
   }
   return incrementalUnion
+}
+
+function offsetToBuffer(polygonOffset) {
+  var unionWithWindingOne = unionFeatureCollection(filterNetWinding(simplepolygon(polygonOffset), function (netWinding){return netWinding == 1}));
+  var unionWithWindingZero = unionFeatureCollection(filterNetWinding(simplepolygon(polygonOffset), function (netWinding){return netWinding == 0}));
+  // This last one might have winding -1, so we might have to rewind it if the difference algorithm requires so
+
+  if (unionWithWindingOne.geometry == null) return {type: "Feature", geometry: null};
+  if (unionWithWindingZero.geometry == null) return unionWithWindingOne;
+  return difference(unionWithWindingOne, unionWithWindingZero);
 }
 
 function winding(poly){
