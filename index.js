@@ -208,6 +208,17 @@ function winding(poly){
   return (coords[(leftVtx-1).mod(coords.length-1)][1] > coords[(leftVtx+1).mod(coords.length-1)][1]) ? 1 : -1;
 }
 
+// This function awaits possible future use
+function rewind(poly){
+  // outer ring to winding +1, inner rings to winding -1
+  if (winding(poly.geometry.coordinates[0]) == -1) poly.geometry.coordinates[0] = poly.geometry.coordinates[0].reverse();
+  for (var i = 1; i < poly.geometry.coordinates.length; i++) {
+    if (winding(poly.geometry.coordinates[i]) == 1) poly.geometry.coordinates[i] = poly.geometry.coordinates[i].reverse();
+  }
+
+  return poly
+}
+
 
 // Function to compare Arrays of numbers. From http://stackoverflow.com/questions/7837456/how-to-compare-arrays-in-javascript
 // Warn if overriding existing method
