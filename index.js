@@ -6,7 +6,7 @@ var union = require('turf-union');
 var difference = require('turf-difference');
 
 module.exports = function(feature, radius, units, resolution){
-  if (!resolution) resolution = 32;
+  if (!resolution) resolution = 32; // Same value as JSTS
   if (radius <= 0) throw new Error("The buffer radius must be positive");
   var geom = feature.geometry;
   if (geom === null) return feature;
@@ -81,6 +81,7 @@ function lineBuffer(line, radius, units, resolution) {
 }
 
 function polygonBuffer(poly, radius, units, resolution) {
+  poly = rewind(poly);
   var polygonOffset = [];
 
   polygonOffset.push(ringOffsetOneSide(helpers.lineString(poly.geometry.coordinates[0]), radius, units, resolution, false, true).geometry.coordinates);
@@ -156,7 +157,7 @@ function arc(pt, radius, bearing1, bearing2, units, resolution, right, shortcut)
         spoke = destination(pt, radius, bearing, units);
         arc.push(spoke.geometry.coordinates);
       }
-      // The value of bearing is independent of bearing1 and bearing2, such that multiple arcs with the same centerpoint coincide, instead of zigzag overlapping
+      // The value of bearing is independent of bearing1 and bearing2, such that multiple arcs with the same centerpoint coincide, instead of zigzag overlapping. This made sense at one point, but doesn't anymore and more over increases the chance of duplicate vertices if no shortcut is used. It could thus be simplified to equal bearing steps starting from bearing 1.
       bearing = bearing + Math.pow(-1, !right + 1) * resMultiple;
       step--;
     }
@@ -180,6 +181,7 @@ function filterNetWinding(fc, filterFn) {
 }
 
 function unionFeatureCollection(fc) {
+  // Note: union takes a polygon, but return a polygon or multipolygon (which it can not take in). In case of buffes, however, it will always return a polygon
   if (fc.features.length == 0) return {type: "Feature", geometry: null};
   var incrementalUnion = fc.features[0];
   if (fc.features.length == 1) return incrementalUnion;
@@ -211,11 +213,10 @@ function winding(poly){
 // This function awaits possible future use
 function rewind(poly){
   // outer ring to winding +1, inner rings to winding -1
-  if (winding(poly.geometry.coordinates[0]) == -1) poly.geometry.coordinates[0] = poly.geometry.coordinates[0].reverse();
+  if (winding(helpers.polygon([poly.geometry.coordinates[0]])) == -1) poly.geometry.coordinates[0] = poly.geometry.coordinates[0].reverse();
   for (var i = 1; i < poly.geometry.coordinates.length; i++) {
-    if (winding(poly.geometry.coordinates[i]) == 1) poly.geometry.coordinates[i] = poly.geometry.coordinates[i].reverse();
+    if (winding(helpers.polygon([poly.geometry.coordinates[i]])) == 1) poly.geometry.coordinates[i] = poly.geometry.coordinates[i].reverse();
   }
-
   return poly
 }
 
