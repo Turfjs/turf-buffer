@@ -199,6 +199,7 @@ function offsetToBuffer(polygonOffset) {
   return difference(unionWithWindingOne, unionWithWindingZero);
 }
 
+// This function awaits possible future use
 function winding(poly){
   // compute winding of first ring
   var coords = poly.geometry.coordinates[0];
