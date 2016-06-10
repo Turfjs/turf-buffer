@@ -44,7 +44,7 @@ function pointBuffer(pt, radius, units, resolution) {
     var spoke = destination(pt, radius, i*resMultiple, units);
     pointOffset[0].push(spoke.geometry.coordinates);
   }
-  if(!(pointOffset[0][0].equals(pointOffset[0][pointOffset[0].length-1])) {
+  if(!(pointOffset[0][0].equals(pointOffset[0][pointOffset[0].length-1]))) {
     pointOffset[0].push(pointOffset[0][0]);
   }
   return helpers.polygon(pointOffset)
@@ -63,11 +63,11 @@ function lineBuffer(line, radius, units, resolution) {
     var previousLineBearing = bearing(helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-2]), helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-1]));
 
     lineOffset.push([]);
-    lineOffset[0].push.apply(lineOffset,[currentBufferPoint.geometry.coordinates]); // Add first buffer point in order to close ring
-    lineOffset[0].push.apply(lineOffset,lineOffsetOneSide(line, radius, units, resolution, false, true).geometry.coordinates);
-    lineOffset[0].push.apply(lineOffset,arc(previousLinePoint, radius, previousLineBearing + 90, previousLineBearing - 90, units, resolution, true).geometry.coordinates);
-    lineOffset[0].push.apply(lineOffset,lineOffsetOneSide(line, radius, units, resolution, true, true).geometry.coordinates);
-    lineOffset[0].push.apply(lineOffset,arc(currentLinePoint, radius, nextLineBearing - 90, nextLineBearing + 90, units, resolution, true).geometry.coordinates);
+    lineOffset[0].push.apply(lineOffset[0],[currentBufferPoint.geometry.coordinates]); // Add first buffer point in order to close ring
+    lineOffset[0].push.apply(lineOffset[0],lineOffsetOneSide(line, radius, units, resolution, false, true).geometry.coordinates);
+    lineOffset[0].push.apply(lineOffset[0],arc(previousLinePoint, radius, previousLineBearing + 90, previousLineBearing - 90, units, resolution, true).geometry.coordinates);
+    lineOffset[0].push.apply(lineOffset[0],lineOffsetOneSide(line, radius, units, resolution, true, true).geometry.coordinates);
+    lineOffset[0].push.apply(lineOffset[0],arc(currentLinePoint, radius, nextLineBearing - 90, nextLineBearing + 90, units, resolution, true).geometry.coordinates);
 
     return offsetToBuffer(helpers.polygon(lineOffset));
 
