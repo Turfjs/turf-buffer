@@ -38,16 +38,16 @@ module.exports = function(feature, radius, units, resolution){
 }
 
 function pointBuffer(pt, radius, units, resolution) {
-  var ring = []
+  var pointOffset = [[]];
   var resMultiple = 360/resolution;
   for(var i  = 0; i < resolution; i++) {
     var spoke = destination(pt, radius, i*resMultiple, units);
-    ring.push(spoke.geometry.coordinates);
+    pointOffset[0].push(spoke.geometry.coordinates);
   }
-  if((ring[0][0] !== ring[ring.length-1][0]) && (ring[0][1] != ring[ring.length-1][1])) {
-    ring.push([ring[0][0], ring[0][1]]);
+  if(!(pointOffset[0][0].equals(pointOffset[0][pointOffset[0].length-1])) {
+    pointOffset[0].push(pointOffset[0][0]);
   }
-  return helpers.polygon([ring])
+  return helpers.polygon(pointOffset)
 }
 
 function lineBuffer(line, radius, units, resolution) {
@@ -62,13 +62,14 @@ function lineBuffer(line, radius, units, resolution) {
     var previousLinePoint = helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-1]);
     var previousLineBearing = bearing(helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-2]), helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-1]));
 
-    lineOffset.push.apply(lineOffset,[currentBufferPoint.geometry.coordinates]); // Add first buffer point in order to close ring
-    lineOffset.push.apply(lineOffset,lineOffsetOneSide(line, radius, units, resolution, false, true).geometry.coordinates);
-    lineOffset.push.apply(lineOffset,arc(previousLinePoint, radius, previousLineBearing + 90, previousLineBearing - 90, units, resolution, true).geometry.coordinates);
-    lineOffset.push.apply(lineOffset,lineOffsetOneSide(line, radius, units, resolution, true, true).geometry.coordinates);
-    lineOffset.push.apply(lineOffset,arc(currentLinePoint, radius, nextLineBearing - 90, nextLineBearing + 90, units, resolution, true).geometry.coordinates);
+    lineOffset.push([]);
+    lineOffset[0].push.apply(lineOffset,[currentBufferPoint.geometry.coordinates]); // Add first buffer point in order to close ring
+    lineOffset[0].push.apply(lineOffset,lineOffsetOneSide(line, radius, units, resolution, false, true).geometry.coordinates);
+    lineOffset[0].push.apply(lineOffset,arc(previousLinePoint, radius, previousLineBearing + 90, previousLineBearing - 90, units, resolution, true).geometry.coordinates);
+    lineOffset[0].push.apply(lineOffset,lineOffsetOneSide(line, radius, units, resolution, true, true).geometry.coordinates);
+    lineOffset[0].push.apply(lineOffset,arc(currentLinePoint, radius, nextLineBearing - 90, nextLineBearing + 90, units, resolution, true).geometry.coordinates);
 
-    return offsetToBuffer(helpers.polygon([lineOffset]));
+    return offsetToBuffer(helpers.polygon(lineOffset));
 
   } else {
 
@@ -115,7 +116,7 @@ function ringOffsetOneSide(ring, radius, units, resolution, reverse, right) {
   if (reverse === undefined) var reverse = false;
   if (right === undefined) var right = true;
   if (reverse) ring.geometry.coordinates = ring.geometry.coordinates.reverse();
-  var coords = ring.geometry.coordinates; // ring is a linestring
+  var coords = ring.geometry.coordinates; // ring is a lineString
   var ringOffset = [];
 
   // situation at current point = point 0
