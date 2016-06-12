@@ -1,14 +1,14 @@
 {
   "name": "turf-buffer",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "description": "turf buffer module",
   "main": "index.js",
   "scripts": {
-    "test": "tape test.js"
+  "test": "tape test.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/morganherlocker/turf-buffer.git"
+    "url": "https://github.com/mclaeysb/turf-buffer.git"
   },
   "keywords": [
     "buffer",
@@ -19,20 +19,21 @@
     "geojson",
     "turf"
   ],
-  "author": "morganherlocker",
+  "author": "Manuel Claeys Bouuaert",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/morganherlocker/turf-buffer/issues"
+    "url": "https://github.com/mclaeysb/turf-buffer/issues"
   },
-  "homepage": "https://github.com/morganherlocker/turf-buffer",
+  "homepage": "https://github.com/mclaeysb/turf-buffer",
   "devDependencies": {
     "tape": "^2.13.3"
   },
   "dependencies": {
-    "turf-bearing": "0.0.2",
-    "turf-destination": "0.0.5",
-    "turf-featurecollection": "^0.1.0",
-    "turf-point": "^0.1.6",
-    "turf-polygon": "^0.1.1"
+    "simplepolygon": "^1.0.0",
+    "turf-destination": "^3.0.0",
+    "turf-bearing": "^3.0.0",
+    "turf-helpers": "^3.0.0",
+    "turf-union": "^3.0.0",
+    "turf-difference": "^3.0.0"
   }
 }
