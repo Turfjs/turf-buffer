@@ -1,6 +1,4 @@
-var simplepolygon = require('../simplepolygon');
-var plot = require('../node-tests/plot.js');
-
+var simplepolygon = require('simplepolygon');
 var destination = require('turf-destination');
 var bearing = require('turf-bearing');
 var helpers = require('turf-helpers');
@@ -9,7 +7,8 @@ var difference = require('turf-difference');
 
 module.exports = function(feature, radius, units, resolution){
   if (!resolution) resolution = 32; // Same value as JSTS
-  if (radius <= 0) throw new Error("The buffer radius must be positive");
+  if (radius < 0) throw new Error("The buffer radius must be positive");
+  if (radius == 0) return feature;
   var geom = feature.geometry;
   if (geom === null) return feature;
   if(geom.type === 'Point') {
@@ -179,6 +178,8 @@ function filterNetWinding(fc, filterFn) {
   while (i--) {
     if (!filterFn(fc.features[i].properties.netWinding)) {
         fc.features.splice(i, 1);
+    } else {
+      fc.features[i].properties = {};
     }
   }
   return fc;
