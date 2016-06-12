@@ -1,4 +1,6 @@
 var simplepolygon = require('../simplepolygon');
+var plot = require('../node-tests/plot.js');
+
 var destination = require('turf-destination');
 var bearing = require('turf-bearing');
 var helpers = require('turf-helpers');
@@ -53,6 +55,8 @@ function pointBuffer(pt, radius, units, resolution) {
 function lineBuffer(line, radius, units, resolution) {
   var lineOffset = [];
 
+  line.geometry.coordinates = removeDuplicates(line.geometry.coordinates);
+
   if (!(line.geometry.coordinates[0].equals(line.geometry.coordinates[line.geometry.coordinates.length-1]))) {
 
     // situation at current point = point 0
@@ -81,8 +85,14 @@ function lineBuffer(line, radius, units, resolution) {
 }
 
 function polygonBuffer(poly, radius, units, resolution) {
-  poly = rewind(poly);
   var polygonOffset = [];
+
+  poly = rewind(poly);
+
+  poly.geometry.coordinates[0] = removeDuplicates(poly.geometry.coordinates[0]);
+  for (var i = 1; i < poly.geometry.coordinates.length; i++) {
+    poly.geometry.coordinates[i] = removeDuplicates(poly.geometry.coordinates[i]);
+  }
 
   polygonOffset.push(ringOffsetOneSide(helpers.lineString(poly.geometry.coordinates[0]), radius, units, resolution, false, true).geometry.coordinates);
   for (var i = 1; i < poly.geometry.coordinates.length; i++) {
@@ -139,33 +149,27 @@ function arc(pt, radius, bearing1, bearing2, units, resolution, right, shortcut)
   if (shortcut === undefined) var shortcut = false;
   var arc = [];
   var resMultiple = 360/resolution;
-  if (right) {
-      var bearing = Math.floor(bearing1/resMultiple)*resMultiple;
-  } else {
-    var bearing = Math.ceil(bearing1/resMultiple)*resMultiple;
-  }
   var angle = (Math.pow(-1, right + 1) * (bearing1 - bearing2)).mod(360);
-  var numSteps = Math.ceil((Math.pow(-1, right + 1) * (bearing - bearing2)).mod(360)/resMultiple);
-  var step = numSteps;
+  var numSteps = Math.floor(angle/resMultiple);
+  var step = numSteps; // Counting steps first is easier than checking angle (angle involves checking 'right', 'mod(360)', lefthandedness of bearings
+  var bearing = bearing1;
   // Add spoke for bearing1
   var spoke = destination(pt, radius, bearing1, units);
   arc.push(spoke.geometry.coordinates);
+  // Add spokes for all bearings between bearing1 to bearing2
+  // But don't add spokes if the angle is reflex and the shortcut preference is set. In that case, just add bearing1 and bearing2. This prevents double, zigzag-overlapping arcs, and potentially non-unique vertices, when a lineOffsetOneSide is run on both sides.
   if (!(angle > 180 && shortcut)) {
     while (step) {
-      // Only add spokes for bearings different than the first and last
-      if (!(bearing == bearing1) || (bearing == bearing2)) {
-        spoke = destination(pt, radius, bearing, units);
-        arc.push(spoke.geometry.coordinates);
-      }
-      // The value of bearing is independent of bearing1 and bearing2, such that multiple arcs with the same centerpoint coincide, instead of zigzag overlapping. This made sense at one point, but doesn't anymore and more over increases the chance of duplicate vertices if no shortcut is used. It could thus be simplified to equal bearing steps starting from bearing 1.
       bearing = bearing + Math.pow(-1, !right + 1) * resMultiple;
+      spoke = destination(pt, radius, bearing, units);
+      arc.push(spoke.geometry.coordinates);
       step--;
     }
   }
-  // Only add spoke for bearing2 if it's not a straight line (equivalently: angle == 0)
-  if (!((bearing == bearing1) && (bearing1 == bearing2))) {
-    spoke = destination(pt, radius, bearing2, units);
-    arc.push(spoke.geometry.coordinates);
+  // Add spoke for bearing 2, but only if this spoke has not been added yet. Do this by checking the destination point, since slightly different bearings can create equal destination points.
+  var spokeBearing2 = destination(pt, radius, bearing2, units);
+  if (!spokeBearing2.geometry.coordinates.equals(spoke.geometry.coordinates)) {
+    arc.push(spokeBearing2.geometry.coordinates);
   }
   return helpers.lineString(arc)
 }
@@ -218,6 +222,15 @@ function rewind(poly){
     if (winding(helpers.polygon([poly.geometry.coordinates[i]])) == 1) poly.geometry.coordinates[i] = poly.geometry.coordinates[i].reverse();
   }
   return poly
+}
+
+function removeDuplicates(arr) {
+  for (var i = arr.length-1; i > 0; i--) {
+    if (arr[i].equals(arr[i-1])) {
+      arr.splice(i,1);
+    }
+  }
+  return arr;
 }
 
 
