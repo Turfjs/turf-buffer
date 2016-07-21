@@ -4,7 +4,7 @@
   "description": "turf buffer module",
   "main": "index.js",
   "scripts": {
-  "test": "tape test.js"
+    "test": "tape test/test.js"
   },
   "repository": {
     "type": "git",
@@ -26,7 +26,9 @@
   },
   "homepage": "https://github.com/mclaeysb/turf-buffer",
   "devDependencies": {
-    "tape": "^2.13.3"
+    "benchmark": "^2.1.1",
+    "tape": "^2.13.3",
+    "turf-buffer": "^3.0.12"
   },
   "dependencies": {
     "simplepolygon": "^1.0.0",
