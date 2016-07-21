@@ -1,44 +1,44 @@
 var test = require('tape');
-var buffer = require('./');
+var buffer = require('../');
 var fs = require('fs');
 var helpers = require('turf-helpers')
 
 test('buffer', function(t){
-  var pt = JSON.parse(fs.readFileSync(__dirname+'/fixtures/point.geojson'));
-  var multipt = JSON.parse(fs.readFileSync(__dirname+'/fixtures/multiPoint.geojson'));
-  var line = JSON.parse(fs.readFileSync(__dirname+'/fixtures/lineString.geojson'));
-  var multiline = JSON.parse(fs.readFileSync(__dirname+'/fixtures/multiLineString.geojson'));
-  var polygon = JSON.parse(fs.readFileSync(__dirname+'/fixtures/polygon.geojson'));
-  var multipolygon = JSON.parse(fs.readFileSync(__dirname+'/fixtures/multiPolygon.geojson'));
+  var point = JSON.parse(fs.readFileSync(__dirname+'/fixtures/Point.geojson'));
+  var multiPoint = JSON.parse(fs.readFileSync(__dirname+'/fixtures/MultiPoint.geojson'));
+  var lineString = JSON.parse(fs.readFileSync(__dirname+'/fixtures/LineString.geojson'));
+  var multiLineString = JSON.parse(fs.readFileSync(__dirname+'/fixtures/MultiLineString.geojson'));
+  var polygon = JSON.parse(fs.readFileSync(__dirname+'/fixtures/Polygon.geojson'));
+  var multiPolygon = JSON.parse(fs.readFileSync(__dirname+'/fixtures/MultiPolygon.geojson'));
 
-  var buffPt = buffer(pt, 1, 'kilometers', 100);
-  fs.writeFileSync(__dirname+'/fixtures/out/point.geojson', JSON.stringify(helpers.featureCollection([buffPt, pt])));
+  var BufferedPoint = buffer(point, 1, 'kilometers', 100);
+  fs.writeFileSync(__dirname+'/fixtures/out/Point.geojson', JSON.stringify(helpers.featureCollection([BufferedPoint, point])));
 
-  var buffMultiPt = buffer(multipt, 1, 'kilometers');
-  buffMultiPt.features.push(multipt)
-  fs.writeFileSync(__dirname+'/fixtures/out/multipoint.geojson', JSON.stringify(buffMultiPt));
+  var BufferedMultiPoint = buffer(multiPoint, 1, 'kilometers');
+  BufferedMultiPoint.features.push(multiPoint)
+  fs.writeFileSync(__dirname+'/fixtures/out/MultiPoint.geojson', JSON.stringify(BufferedMultiPoint));
 
-  var buffLine = buffer(line, 1, 'kilometers');
-  fs.writeFileSync(__dirname+'/fixtures/out/line.geojson', JSON.stringify(helpers.featureCollection([buffLine, line])));
+  var BufferedLineString = buffer(lineString, 1, 'kilometers');
+  fs.writeFileSync(__dirname+'/fixtures/out/LineString.geojson', JSON.stringify(helpers.featureCollection([BufferedLineString, lineString])));
 
-  var buffMultiLine = buffer(multiline, 1, 'kilometers');
-  buffMultiLine.features.push(multiline)
-  fs.writeFileSync(__dirname+'/fixtures/out/multiline.geojson', JSON.stringify(buffMultiLine));
+  var BufferedMultiLineString = buffer(multiLineString, 1, 'kilometers');
+  BufferedMultiLineString.features.push(multiLineString)
+  fs.writeFileSync(__dirname+'/fixtures/out/MultiLineString.geojson', JSON.stringify(BufferedMultiLineString));
 
-  var buffPolygon = buffer(polygon, 1, 'kilometers');
-  fs.writeFileSync(__dirname+'/fixtures/out/polygon.geojson', JSON.stringify(helpers.featureCollection([buffPolygon, polygon])));
+  var bufferedPolygon = buffer(polygon, 1, 'kilometers');
+  fs.writeFileSync(__dirname+'/fixtures/out/Polygon.geojson', JSON.stringify(helpers.featureCollection([bufferedPolygon, polygon])));
 
-  var buffMultiPolygon = buffer(multipolygon, 0.2, 'kilometers');
-  buffMultiPolygon.features.push(multipolygon)
-  fs.writeFileSync(__dirname+'/fixtures/out/multipolygon.geojson', JSON.stringify(buffMultiPolygon));
+  var bufferedMultiPolygon = buffer(multiPolygon, 0.2, 'kilometers');
+  bufferedMultiPolygon.features.push(multiPolygon)
+  fs.writeFileSync(__dirname+'/fixtures/out/MultiPolygon.geojson', JSON.stringify(bufferedMultiPolygon));
 
 
-  t.ok(buffPt, 'should buffer a point');
-  t.ok(buffMultiPt, 'should buffer a multipoint');
-  t.ok(buffLine, 'should buffer a line');
-  t.ok(buffMultiLine, 'should buffer a multiline');
-  t.ok(buffPolygon, 'should buffer a polygon');
-  t.ok(buffMultiPolygon, 'should buffer a multipolygon');
+  t.ok(BufferedPoint, 'should buffer a Point');
+  t.ok(BufferedMultiPoint, 'should buffer a MultiPoint');
+  t.ok(BufferedLineString, 'should buffer a LineString');
+  t.ok(BufferedMultiLineString, 'should buffer a MultiLineString');
+  t.ok(bufferedPolygon, 'should buffer a Polygon');
+  t.ok(bufferedMultiPolygon, 'should buffer a multiPolygon');
 
   t.end();
 });
