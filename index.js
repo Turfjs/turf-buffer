@@ -45,7 +45,7 @@ function pointBuffer(pt, radius, units, resolution) {
     var spoke = destination(pt, radius, i*resMultiple, units);
     pointOffset[0].push(spoke.geometry.coordinates);
   }
-  if(!(pointOffset[0][0].equals(pointOffset[0][pointOffset[0].length-1]))) {
+  if(!(equalArrays(pointOffset[0][0],pointOffset[0][pointOffset[0].length-1]))) {
     pointOffset[0].push(pointOffset[0][0]);
   }
   return helpers.polygon(pointOffset)
@@ -56,7 +56,7 @@ function lineBuffer(line, radius, units, resolution) {
 
   line.geometry.coordinates = removeDuplicates(line.geometry.coordinates);
 
-  if (!(line.geometry.coordinates[0].equals(line.geometry.coordinates[line.geometry.coordinates.length-1]))) {
+  if (!(equalArrays(line.geometry.coordinates[0],line.geometry.coordinates[line.geometry.coordinates.length-1]))) {
 
     // situation at current point = point 0
     var currentLinePoint = helpers.point(line.geometry.coordinates[0]);
@@ -148,9 +148,9 @@ function arc(pt, radius, bearing1, bearing2, units, resolution, right, shortcut)
   if (shortcut === undefined) var shortcut = false;
   var arc = [];
   var resMultiple = 360/resolution;
-  var angle = (Math.pow(-1, right + 1) * (bearing1 - bearing2)).mod(360);
+  var angle = (Math.pow(-1, right + 1) * (bearing1 - bearing2)).modulo(360);
   var numSteps = Math.floor(angle/resMultiple);
-  var step = numSteps; // Counting steps first is easier than checking angle (angle involves checking 'right', 'mod(360)', lefthandedness of bearings
+  var step = numSteps; // Counting steps first is easier than checking angle (angle involves checking 'right', 'modulo(360)', lefthandedness of bearings
   var bearing = bearing1;
   // Add spoke for bearing1
   var spoke = destination(pt, radius, bearing1, units);
@@ -167,7 +167,7 @@ function arc(pt, radius, bearing1, bearing2, units, resolution, right, shortcut)
   }
   // Add spoke for bearing 2, but only if this spoke has not been added yet. Do this by checking the destination point, since slightly different bearings can create equal destination points.
   var spokeBearing2 = destination(pt, radius, bearing2, units);
-  if (!spokeBearing2.geometry.coordinates.equals(spoke.geometry.coordinates)) {
+  if (!equalArrays(spokeBearing2.geometry.coordinates,spoke.geometry.coordinates)) {
     arc.push(spokeBearing2.geometry.coordinates);
   }
   return helpers.lineString(arc)
@@ -212,7 +212,7 @@ function winding(poly){
   var coords = poly.geometry.coordinates[0];
   var leftVtx = 0;
   for (var i = 0; i < coords.length-1; i++) { if (coords[i][0] < coords[leftVtx][0]) leftVtx = i; }
-  return (coords[(leftVtx-1).mod(coords.length-1)][1] > coords[(leftVtx+1).mod(coords.length-1)][1]) ? 1 : -1;
+  return (coords[(leftVtx-1).modulo(coords.length-1)][1] > coords[(leftVtx+1).modulo(coords.length-1)][1]) ? 1 : -1;
 }
 
 // This function awaits possible future use
@@ -227,7 +227,7 @@ function rewind(poly){
 
 function removeDuplicates(arr) {
   for (var i = arr.length-1; i > 0; i--) {
-    if (arr[i].equals(arr[i-1])) {
+    if (equalArrays(arr[i],arr[i-1])) {
       arr.splice(i,1);
     }
   }
@@ -236,36 +236,31 @@ function removeDuplicates(arr) {
 
 
 // Function to compare Arrays of numbers. From http://stackoverflow.com/questions/7837456/how-to-compare-arrays-in-javascript
-// Warn if overriding existing method
-// if(Array.prototype.equals) console.warn("Overriding existing Array.prototype.equals. Possible causes: New API defines the method, there's a framework conflict or you've got double inclusions in your code.");
-// attach the .equals method to Array's prototype to call it on any array
-Array.prototype.equals = function (array) {
+function equalArrays(array1, array2) {
     // if the other array is a falsy value, return
-    if (!array)
+    if (!array1 || !array2)
         return false;
 
     // compare lengths - can save a lot of time
-    if (this.length != array.length)
+    if (array1.length != array2.length)
         return false;
 
-    for (var i = 0, l=this.length; i < l; i++) {
+    for (var i = 0, l=array1.length; i < l; i++) {
         // Check if we have nested arrays
-        if (this[i] instanceof Array && array[i] instanceof Array) {
+        if (array1[i] instanceof Array && array2[i] instanceof Array) {
             // recurse into the nested arrays
-            if (!this[i].equals(array[i]))
+            if (!equalArrays(array1[i],array2[i]))
                 return false;
         }
-        else if (this[i] != array[i]) {
+        else if (array1[i] != array2[i]) {
             // Warning - two different object instances will never be equal: {x:20} != {x:20}
             return false;
         }
     }
     return true;
 }
-// Hide method from for-in loops
-Object.defineProperty(Array.prototype, "equals", {enumerable: false});
 
 // Fix Javascript modulo for negative number. From http://stackoverflow.com/questions/4467539/javascript-modulo-not-behaving
-Number.prototype.mod = function(n) {
+Number.prototype.modulo = function(n) {
     return ((this%n)+n)%n;
 }
