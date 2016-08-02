@@ -197,8 +197,9 @@ function unionFeatureCollection(fc) {
 }
 
 function offsetToBuffer(polygonOffset) {
-  var unionWithWindingOne = unionFeatureCollection(filterNetWinding(simplepolygon(polygonOffset), function (netWinding){return netWinding == 1}));
-  var unionWithWindingZero = unionFeatureCollection(filterNetWinding(simplepolygon(polygonOffset), function (netWinding){return netWinding == 0}));
+  var sp = simplepolygon(polygonOffset);
+  var unionWithWindingOne = unionFeatureCollection(filterNetWinding(sp, function (netWinding){return netWinding == 1}));
+  var unionWithWindingZero = unionFeatureCollection(filterNetWinding(sp, function (netWinding){return netWinding == 0}));
   // This last one might have winding -1, so we might have to rewind it if the difference algorithm requires so
 
   if (unionWithWindingOne.geometry == null) return {type: "Feature", geometry: null};
@@ -206,7 +207,6 @@ function offsetToBuffer(polygonOffset) {
   return difference(unionWithWindingOne, unionWithWindingZero);
 }
 
-// This function awaits possible future use
 function winding(poly){
   // compute winding of first ring
   var coords = poly.geometry.coordinates[0];
@@ -215,7 +215,6 @@ function winding(poly){
   return (coords[(leftVtx-1).modulo(coords.length-1)][1] > coords[(leftVtx+1).modulo(coords.length-1)][1]) ? 1 : -1;
 }
 
-// This function awaits possible future use
 function rewind(poly){
   // outer ring to winding +1, inner rings to winding -1
   if (winding(helpers.polygon([poly.geometry.coordinates[0]])) == -1) poly.geometry.coordinates[0] = poly.geometry.coordinates[0].reverse();
