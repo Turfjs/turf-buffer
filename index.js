@@ -5,10 +5,24 @@ var helpers = require('turf-helpers');
 var union = require('turf-union');
 var difference = require('turf-difference');
 
-module.exports = function(feature, radius, units, resolution){
+module.exports = buffer;
+
+function buffer(feature, radius, units, resolution){
   if (!resolution) resolution = 32; // Same value as JSTS
   if (radius < 0) throw new Error("The buffer radius must be positive");
   if (radius == 0) return feature;
+  if (feature.type === 'FeatureCollection') {
+    var buffers = [];
+    feature.features.forEach(function(ft) {
+      var featureBuffer = buffer(ft, radius, units, resolution);
+      if (featureBuffer.type === 'Feature') {
+        buffers.push(featureBuffer);
+      } else { // featureBuffer.type === 'FeatureCollection'
+        buffers.push.apply(buffers,featureBuffer.features);
+      }
+    });
+    return helpers.featureCollection(buffers)
+  }
   var geom = feature.geometry;
   if (geom === null) return feature;
   if(geom.type === 'Point') {
