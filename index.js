@@ -211,7 +211,11 @@ function unionFeatureCollection(fc) {
 }
 
 function offsetToBuffer(polygonOffset) {
+  // You can inspect the polygonOffset here
+  // console.log(JSON.stringify(polygonOffset));
   var sp = simplepolygon(polygonOffset);
+  // You can inspect the polygonOffset here
+  // console.log(JSON.stringify(sp));
   var unionWithWindingOne = unionFeatureCollection(filterNetWinding(sp, function (netWinding){return netWinding == 1}));
   var unionWithWindingZero = unionFeatureCollection(filterNetWinding(sp, function (netWinding){return netWinding == 0}));
   // This last one might have winding -1, so we might have to rewind it if the difference algorithm requires so
