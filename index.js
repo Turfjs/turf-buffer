@@ -188,20 +188,19 @@ function arc(pt, radius, bearing1, bearing2, units, resolution, right, shortcut)
 }
 
 function filterNetWinding(fc, filterFn) {
+  var output = {type: 'FeatureCollection', features: []};
   var i = fc.features.length;
   while (i--) {
-    if (!filterFn(fc.features[i].properties.netWinding)) {
-        fc.features.splice(i, 1);
-    } else {
-      fc.features[i].properties = {};
+    if (filterFn(fc.features[i].properties.netWinding)) {
+        output.features.push({type: "Feature", geometry: fc.features[i].geometry, properties: {}});
     }
   }
-  return fc;
+  return output;
 }
 
 function unionFeatureCollection(fc) {
   // Note: union takes a polygon, but return a polygon or multipolygon (which it can not take in). In case of buffes, however, it will always return a polygon
-  if (fc.features.length == 0) return {type: "Feature", geometry: null};
+  if (fc.features.length == 0) return {type: "Feature", geometry: null, properties: {}};
   var incrementalUnion = fc.features[0];
   if (fc.features.length == 1) return incrementalUnion;
   for (var i = 1; i < fc.features.length; i++) {
