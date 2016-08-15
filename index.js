@@ -227,9 +227,14 @@ function offsetToBuffer(polygonOffset) {
 function winding(poly){
   // compute winding of first ring
   var coords = poly.geometry.coordinates[0];
-  var leftVtx = 0;
-  for (var i = 0; i < coords.length-1; i++) { if (coords[i][0] < coords[leftVtx][0]) leftVtx = i; }
-  return (coords[(leftVtx-1).modulo(coords.length-1)][1] > coords[(leftVtx+1).modulo(coords.length-1)][1]) ? 1 : -1;
+  var leftVtxIndex = 0;
+  for (var i = 0; i < coords.length-1; i++) { if (coords[i][0] < coords[leftVtxIndex][0]) leftVtxIndex = i; }
+  var prevVtx = coords[(leftVtxIndex-1).modulo(coords.length-1)];
+  var leftVtx = coords[leftVtxIndex];
+  var nxtVtx = coords[(leftVtxIndex+1).modulo(coords.length-1)];
+  var atan1 = Math.atan((prevVtx[1]-leftVtx[1])/(prevVtx[0]-leftVtx[0]));
+  var atan2 = Math.atan((nxtVtx[1]-leftVtx[1])/(nxtVtx[0]-leftVtx[0]));
+  return (atan1 > atan2) ? 1 : -1;
 }
 
 function rewind(poly){
