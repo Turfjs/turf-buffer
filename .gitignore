@@ -28,3 +28,7 @@ node_modules
 
 # Output of tests
 test/fixtures/out
+
+# Extra tests
+test/test-extra.js
+test/fixtures-extra
