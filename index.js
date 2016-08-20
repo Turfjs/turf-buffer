@@ -72,19 +72,23 @@ function lineBuffer(line, radius, units, resolution) {
 
   if (!(equalArrays(line.geometry.coordinates[0],line.geometry.coordinates[line.geometry.coordinates.length-1]))) {
 
-    // situation at current point = point 0
-    var currentLinePoint = helpers.point(line.geometry.coordinates[0]);
-    var nextLineBearing = bearing(helpers.point(line.geometry.coordinates[0]), helpers.point(line.geometry.coordinates[1]));
-    var currentBufferPoint = destination(currentLinePoint, radius, nextLineBearing + 90, units);
-    var previousLinePoint = helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-1]);
-    var previousLineBearing = bearing(helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-2]), helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-1]));
+    // situation at first point
+    var firstLinePoint = helpers.point(line.geometry.coordinates[0]);
+    var secondLinePoint = helpers.point(line.geometry.coordinates[1]);
+    var firstLineBearing = bearing(firstLinePoint, secondLinePoint);
+    var firstBufferPoint = destination(firstLinePoint, radius, firstLineBearing + 90, units);
+
+    // situation at last point
+    var lastLinePoint = helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-1]);
+    var secondlastLinePoint = helpers.point(line.geometry.coordinates[line.geometry.coordinates.length-2]);
+    var lastLineBearing = bearing(lastLinePoint, secondlastLinePoint);
 
     lineOffset.push([]);
-    lineOffset[0].push.apply(lineOffset[0],[currentBufferPoint.geometry.coordinates]); // Add first buffer point in order to close ring
+    lineOffset[0].push.apply(lineOffset[0],[firstBufferPoint.geometry.coordinates]); // Add first buffer point in order to close ring
     lineOffset[0].push.apply(lineOffset[0],lineOffsetOneSide(line, radius, units, resolution, false, true).geometry.coordinates);
-    lineOffset[0].push.apply(lineOffset[0],arc(previousLinePoint, radius, previousLineBearing + 90, previousLineBearing - 90, units, resolution, true).geometry.coordinates);
+    lineOffset[0].push.apply(lineOffset[0],arc(lastLinePoint, radius, lastLineBearing - 90, lastLineBearing + 90, units, resolution, true).geometry.coordinates);
     lineOffset[0].push.apply(lineOffset[0],lineOffsetOneSide(line, radius, units, resolution, true, true).geometry.coordinates);
-    lineOffset[0].push.apply(lineOffset[0],arc(currentLinePoint, radius, nextLineBearing - 90, nextLineBearing + 90, units, resolution, true).geometry.coordinates);
+    lineOffset[0].push.apply(lineOffset[0],arc(firstLinePoint, radius, firstLineBearing - 90, firstLineBearing + 90, units, resolution, true).geometry.coordinates);
 
     return offsetToBuffer(helpers.polygon(lineOffset));
 
@@ -123,14 +127,13 @@ function lineOffsetOneSide(line, radius, units, resolution, reverse, right) {
   var lineOffset = [];
   if (coords.length == 2) return helpers.lineString(lineOffset)
 
-  var currentLinePoint = helpers.point(coords[1]);
-  var previousLineBearing = bearing(helpers.point(coords[0]), helpers.point(coords[1]));
   for (var i = 1; i < coords.length-1; i++) {
+    var previousLinePoint = helpers.point(coords[i-1]);
+    var currentLinePoint = helpers.point(coords[i]);
     var nextLinePoint = helpers.point(coords[i+1]);
+    var previousLineBearing = bearing(currentLinePoint, previousLinePoint);
     var nextLineBearing = bearing(currentLinePoint, nextLinePoint);
-    lineOffset.push.apply(lineOffset, arc(currentLinePoint, radius, previousLineBearing + Math.pow(-1, right + 1) * 90, nextLineBearing + Math.pow(-1, right + 1) * 90, units, resolution, right, true).geometry.coordinates);
-    var currentLinePoint = nextLinePoint;
-    var previousLineBearing = nextLineBearing;
+    lineOffset.push.apply(lineOffset, arc(currentLinePoint, radius, previousLineBearing - Math.pow(-1, right + 1) * 90, nextLineBearing + Math.pow(-1, right + 1) * 90, units, resolution, right, true).geometry.coordinates);
   }
 
   return helpers.lineString(lineOffset)
@@ -144,15 +147,16 @@ function ringOffsetOneSide(ring, radius, units, resolution, reverse, right) {
   var ringOffset = [];
 
   // situation at current point = point 0
+  var previousRingPoint = helpers.point(coords[coords.length-2]);
   var currentRingPoint = helpers.point(coords[0]);
-  var nextRingBearing = bearing(helpers.point(coords[0]), helpers.point(coords[1]));
+  var nextRingPoint = helpers.point(coords[1]);
+  var nextRingBearing = bearing(currentRingPoint, nextRingPoint);
   var currentBufferPoint = destination(currentRingPoint, radius, nextRingBearing + 90, units);
-  var previousRingPoint = helpers.point(coords[coords.length-1]);
-  var previousRingBearing = bearing(helpers.point(coords[coords.length-2]), helpers.point(coords[coords.length-1]));
+  var previousRingBearing = bearing(currentRingPoint, previousRingPoint);
 
   ringOffset.push.apply(ringOffset, [currentBufferPoint.geometry.coordinates]); // Add first buffer point in order to close ring
   ringOffset.push.apply(ringOffset, lineOffsetOneSide(ring, radius, units, resolution, false, right).geometry.coordinates);
-  ringOffset.push.apply(ringOffset, arc(currentRingPoint, radius, previousRingBearing + Math.pow(-1, right + 1) * 90, nextRingBearing + Math.pow(-1, right + 1) * 90, units, resolution, right, true).geometry.coordinates);
+  ringOffset.push.apply(ringOffset, arc(currentRingPoint, radius, previousRingBearing - Math.pow(-1, right + 1) * 90, nextRingBearing + Math.pow(-1, right + 1) * 90, units, resolution, right, true).geometry.coordinates);
 
   return helpers.lineString(ringOffset)
 }
