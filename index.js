@@ -182,6 +182,8 @@ function arc(pt, radius, bearing1, bearing2, units, resolution, right, shortcut)
       arc.push(spoke.geometry.coordinates);
       step--;
     }
+  } else {
+  arc.push(pt.geometry.coordinates);
   }
   // Add spoke for bearing 2, but only if this spoke has not been added yet. Do this by checking the destination point, since slightly different bearings can create equal destination points.
   var spokeBearing2 = destination(pt, radius, bearing2, units);
