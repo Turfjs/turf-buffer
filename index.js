@@ -4,6 +4,7 @@ var bearing = require('turf-bearing');
 var helpers = require('turf-helpers');
 var union = require('turf-union');
 var difference = require('turf-difference');
+var simplify = require('turf-simplify');
 
 module.exports = buffer;
 
@@ -23,29 +24,31 @@ function buffer(feature, radius, units, resolution){
     });
     return helpers.featureCollection(buffers)
   }
-  var geom = feature.geometry;
-  if (geom === null) return feature;
-  if(geom.type === 'Point') {
+  if (feature.geometry === null) return feature;
+  if (['LineString', 'MultiLineString', 'Polygon', 'MultiPolygon'].indexOf(feature.geometry.type) > -1) { // turf-simplify() currently handles points and multipoints incorrectly
+    feature = simplify(feature, helpers.distanceToDegrees(radius/20, units)); // radius/20 seems like the optimal balance between speed and detail
+  }
+  if(feature.geometry.type === 'Point') {
     return pointBuffer(feature, radius, units, resolution);
-  } else if(geom.type === 'MultiPoint') {
+  } else if(feature.geometry.type === 'MultiPoint') {
     var buffers = [];
-    geom.coordinates.forEach(function(coords) {
+    feature.geometry.coordinates.forEach(function(coords) {
       buffers.push(pointBuffer(helpers.point(coords), radius, units, resolution));
     });
     return helpers.featureCollection(buffers)
-  } else if(geom.type === 'LineString') {
+  } else if(feature.geometry.type === 'LineString') {
     return lineBuffer(feature, radius, units, resolution);
-  } else if(geom.type === 'MultiLineString') {
+  } else if(feature.geometry.type === 'MultiLineString') {
     var buffers = [];
-    geom.coordinates.forEach(function(coords) {
+    feature.geometry.coordinates.forEach(function(coords) {
       buffers.push(lineBuffer(helpers.lineString(coords), radius, units, resolution));
     });
     return helpers.featureCollection(buffers)
-  } else if(geom.type === 'Polygon') {
+  } else if(feature.geometry.type === 'Polygon') {
     return polygonBuffer(feature, radius, units, resolution);
-  } else if(geom.type === 'MultiPolygon') {
+  } else if(feature.geometry.type === 'MultiPolygon') {
     var buffers = [];
-    geom.coordinates.forEach(function(coords) {
+    feature.geometry.coordinates.forEach(function(coords) {
       buffers.push(polygonBuffer(helpers.polygon(coords), radius, units, resolution));
     });
     return helpers.featureCollection(buffers)
@@ -219,7 +222,7 @@ function offsetToBuffer(polygonOffset) {
   // You can inspect the polygonOffset here
   // console.log(JSON.stringify(polygonOffset));
   var sp = simplepolygon(polygonOffset);
-  // You can inspect the polygonOffset here
+  // You can inspect the simplepolygon output here
   // console.log(JSON.stringify(sp));
   var unionWithWindingOne = unionFeatureCollection(filterNetWinding(sp, function (netWinding){return netWinding == 1}));
   var unionWithWindingZero = unionFeatureCollection(filterNetWinding(sp, function (netWinding){return netWinding == 0}));

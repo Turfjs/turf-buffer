@@ -36,6 +36,7 @@
     "turf-bearing": "^3.0.0",
     "turf-helpers": "^3.0.0",
     "turf-union": "^3.0.0",
-    "turf-difference": "^3.0.0"
+    "turf-difference": "^3.0.0",
+    "turf-simplify": "^3.0.0"
   }
 }
