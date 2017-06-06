@@ -1,3 +1,4 @@
+# DEPRECATED - replaced with [`@turf/buffer`](https://github.com/Turfjs/turf/tree/master/packages/turf-buffer)
 # turf-buffer
 
 [![build status](https://secure.travis-ci.org/Turfjs/turf-buffer.png)](http://travis-ci.org/Turfjs/turf-buffer)
