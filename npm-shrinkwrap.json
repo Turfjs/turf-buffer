@@ -8,15 +8,9 @@
       "resolved": "https://registry.npmjs.org/geojson-normalize/-/geojson-normalize-0.0.0.tgz"
     },
     "jsts": {
-      "version": "0.15.0",
-      "from": "jsts@>=0.15.0 <0.16.0",
-      "resolved": "https://registry.npmjs.org/jsts/-/jsts-0.15.0.tgz",
-      "dependencies": {
-        "javascript.util": {
-          "version": "0.12.5",
-          "resolved": "https://registry.npmjs.org/javascript.util/-/javascript.util-0.12.5.tgz"
-        }
-      }
+      "version": "1.0.3",
+      "from": "jsts@>=1.0.3 <1.0.4",
+      "resolved": "https://registry.npmjs.org/jsts/-/jsts-1.0.3.tgz"
     },
     "turf-combine": {
       "version": "1.0.2",
